@@ -48,6 +48,7 @@ DOUBLE_JUST_ABOVE_HALF = 0.500000001
 FLOAT_NEGATIVE_INFINITY = float("-inf")
 FLOAT_INFINITY = float("inf")
 FLOAT_NAN = float("nan")
+FLOAT_NEGATIVE_NAN = float("-nan")
 
 # Decimal128 boundary values
 DECIMAL128_NEGATIVE_INFINITY = Decimal128("-Infinity")
