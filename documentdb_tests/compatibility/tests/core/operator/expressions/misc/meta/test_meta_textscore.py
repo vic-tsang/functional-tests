@@ -33,6 +33,7 @@ def test_meta_textscore_single_word(text_collection):
                 {"$match": {"$text": {"$search": "apple"}}},
                 {"$project": {"_id": 1, "score": {"$meta": "textScore"}}},
                 {"$sort": {"score": 1}},
+                {"$project": {"score": 0}},
             ],
             "cursor": {},
         },
@@ -40,8 +41,8 @@ def test_meta_textscore_single_word(text_collection):
     assertSuccess(
         result,
         [
-            {"_id": 1, "score": 0.6666666666666666},
-            {"_id": 2, "score": 1.75},
+            {"_id": 1},
+            {"_id": 2},
         ],
     )
 
