@@ -1,5 +1,5 @@
 """
-Tests for $ifNull with system variables.
+Tests for $ifNull with system and user-defined variables.
 
 Covers $$CURRENT and $let variable resolution.
 """

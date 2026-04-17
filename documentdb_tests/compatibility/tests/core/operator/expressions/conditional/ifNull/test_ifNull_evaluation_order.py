@@ -1,8 +1,8 @@
 """
-Tests for $ifNull evaluation order and short-circuit behavior.
+Tests for $ifNull evaluation order and error propagation.
 
-Covers short-circuit with potentially erroring expressions
-and error propagation from input expressions.
+Covers eager evaluation of all inputs (no short-circuiting),
+multi-arg fallback behavior, and error propagation from input expressions.
 """
 
 import pytest
@@ -16,23 +16,23 @@ from documentdb_tests.compatibility.tests.core.operator.expressions.utils.utils 
 )
 from documentdb_tests.framework.error_codes import BAD_VALUE_ERROR
 
-SHORT_CIRCUIT_TESTS: list[ExpressionTestCase] = [
+EAGER_EVALUATION_TESTS: list[ExpressionTestCase] = [
     ExpressionTestCase(
-        "short_circuit_divide_by_zero",
+        "eager_eval_divide_by_zero",
         expression={"$ifNull": ["$a", {"$divide": [1, 0]}, "default"]},
         doc={"a": 1},
         error_code=BAD_VALUE_ERROR,
         msg="$ifNull evaluates all inputs; divide-by-zero errors even when first input is non-null",
     ),
     ExpressionTestCase(
-        "short_circuit_array_elem_at",
+        "eager_eval_array_elem_at",
         expression={"$ifNull": ["$a", {"$arrayElemAt": ["$nonexistent", 99]}, "default"]},
         doc={"a": 1},
         expected=1,
         msg="$arrayElemAt on missing field resolves to missing, first non-null returned",
     ),
     ExpressionTestCase(
-        "short_circuit_size_on_null",
+        "eager_eval_size_on_null",
         expression={"$ifNull": ["$a", {"$size": "$b"}, "default"]},
         doc={"a": "exists", "b": None},
         expected="exists",
@@ -57,12 +57,12 @@ ERROR_PROPAGATION_TESTS: list[ExpressionTestCase] = [
     ),
 ]
 
-ALL_TESTS = SHORT_CIRCUIT_TESTS + ERROR_PROPAGATION_TESTS
+ALL_TESTS = EAGER_EVALUATION_TESTS + ERROR_PROPAGATION_TESTS
 
 
 @pytest.mark.parametrize("test", ALL_TESTS, ids=lambda t: t.id)
 def test_ifNull_evaluation_order(collection, test):
-    """Test $ifNull evaluation order and short-circuit behavior."""
+    """Test $ifNull eager evaluation order and error propagation."""
     result = execute_expression_with_insert(collection, test.expression, test.doc)
     assert_expression_result(
         result, expected=test.expected, error_code=test.error_code, msg=test.msg

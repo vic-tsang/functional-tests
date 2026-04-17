@@ -68,7 +68,10 @@ DOTTED_PATH_TESTS: list[ExpressionTestCase] = [
         expression={"$ifNull": ["$a.b.c", "default"]},
         doc={"a": [{"b": {"c": "1"}}, {"b": {"c": "2"}}]},
         expected=["1", "2"],
-        msg="$ifNull with dotted path into array of objects should resolve to array of values",
+        msg=(
+            "Dotted path into array with missing subfield returns empty array"
+            " (not null), so $ifNull returns [] rather than default"
+        ),
     ),
     ExpressionTestCase(
         "dotted_path_array_with_missing_subfield",
