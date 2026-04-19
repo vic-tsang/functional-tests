@@ -18,6 +18,7 @@ from documentdb_tests.compatibility.tests.core.operator.expressions.utils.utils 
 from documentdb_tests.framework.parametrize import pytest_params
 from documentdb_tests.framework.test_constants import (
     DOUBLE_MAX_SAFE_INTEGER,
+    DOUBLE_NEGATIVE_ZERO,
     DOUBLE_PRECISION_LOSS,
     INT32_MAX,
     INT32_MIN,
@@ -85,6 +86,12 @@ LARGE_NUMBER_TESTS: list[ExpressionTestCase] = [
         expression={"$cmp": [Decimal128(str(DOUBLE_PRECISION_LOSS)), Int64(DOUBLE_PRECISION_LOSS)]},
         expected=0,
         msg="Decimal128(2^53+1) equals Int64(2^53+1)",
+    ),
+    ExpressionTestCase(
+        "neg_zero_vs_pos_zero",
+        expression={"$cmp": [DOUBLE_NEGATIVE_ZERO, 0]},
+        expected=0,
+        msg="-0.0 equals 0 (negative zero is equal to positive zero)",
     ),
 ]
 
