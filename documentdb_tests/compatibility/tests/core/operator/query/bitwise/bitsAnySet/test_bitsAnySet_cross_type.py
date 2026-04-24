@@ -1,7 +1,8 @@
 """
 Tests for $bitsAnySet BinData and Decimal128 specific behavior.
 
-Validates BinData subtype handling (0, 1, 2, 128), variable-length BinData with zero extension,
+Validates BinData subtype handling (0, 1, 2, 3, 4, 5, 6, 128),
+variable-length BinData with zero extension,
 little-endian byte order for BinData bitmasks, cross-type field/bitmask combinations,
 and Decimal128 field values including negative two's complement, negative zero,
 boundary values, and array-of-Decimal128 matching.
@@ -31,6 +32,7 @@ BINDATA_SUBTYPE_TESTS: list[QueryTestCase] = [
             {"_id": 1, "a": Binary(b"\x06", 0)},
             {"_id": 2, "a": Binary(b"\x01", 0)},
         ],
+        # Driver converts BinData subtype 0 to raw bytes, so raw bytes is expected
         expected=[{"_id": 2, "a": b"\x01"}],
         msg="BinData subtype 0 (generic) bit checking works; 0x01 has bit 0 set",
     ),
@@ -77,6 +79,66 @@ BINDATA_SUBTYPE_TESTS: list[QueryTestCase] = [
         ],
         expected=[{"_id": 2, "a": Binary(b"\x01", 128)}],
         msg="BinData subtype 128 (user-defined) bit checking works",
+    ),
+    QueryTestCase(
+        id="bindata_subtypes_3_4_5_6",
+        filter={"a": {"$bitsAnySet": 1}},
+        doc=[
+            # bit 0 set (first byte odd) — should match
+            {
+                "_id": 1,
+                "a": Binary(b"\x07\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 3),
+            },
+            {
+                "_id": 2,
+                "a": Binary(b"\x07\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 4),
+            },
+            {
+                "_id": 3,
+                "a": Binary(b"\xe9\x9a\x18\xc4\x28\xcb\x38\xd5\xf2\x60\x85\x36\x78\x92\x2e\x03", 5),
+            },
+            {
+                "_id": 4,
+                "a": Binary(b"\x07\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 6),
+            },
+            # bit 0 clear (first byte even) — should not match
+            {
+                "_id": 5,
+                "a": Binary(b"\x06\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 3),
+            },
+            {
+                "_id": 6,
+                "a": Binary(b"\x06\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 4),
+            },
+            {
+                "_id": 7,
+                "a": Binary(b"\xd4\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\x09\x98\xec\xf8\x42\x7e", 5),
+            },
+            {
+                "_id": 8,
+                "a": Binary(b"\x06\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 6),
+            },
+        ],
+        expected=[
+            {
+                "_id": 1,
+                "a": Binary(b"\x07\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 3),
+            },
+            {
+                "_id": 2,
+                "a": Binary(b"\x07\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 4),
+            },
+            {
+                "_id": 3,
+                "a": Binary(b"\xe9\x9a\x18\xc4\x28\xcb\x38\xd5\xf2\x60\x85\x36\x78\x92\x2e\x03", 5),
+            },
+            {
+                "_id": 4,
+                "a": Binary(b"\x07\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff", 6),
+            },
+        ],
+        msg="Subtypes 3 (UUID old), 4 (UUID), 5 (MD5), 6 (C# legacy UUID): "
+        "bit 0 set → matches; bit 0 clear → does not match",
     ),
 ]
 
