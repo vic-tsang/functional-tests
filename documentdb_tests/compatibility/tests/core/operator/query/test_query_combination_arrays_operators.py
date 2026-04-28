@@ -1,6 +1,7 @@
 """
 Tests for $size combined with other array operators ($all, $elemMatch),
-logical operators ($and, $or, $nor), and comparison operators ($exists, $ne, $type, $where).
+logical operators ($not, $and, $or, $nor),
+and comparison operators ($exists, $ne, $type, $where).
 """
 
 import pytest
@@ -48,6 +49,17 @@ COMBINATION_ARRAY_OPS_TESTS: list[QueryTestCase] = [
 ]
 
 LOGICAL_OPERATOR_TESTS: list[QueryTestCase] = [
+    QueryTestCase(
+        id="not_size_2_matches_other_sizes",
+        filter={"a": {"$not": {"$size": 2}}},
+        doc=[
+            {"_id": 1, "a": [1]},
+            {"_id": 2, "a": [1, 2]},
+            {"_id": 3, "a": [1, 2, 3]},
+        ],
+        expected=[{"_id": 1, "a": [1]}, {"_id": 3, "a": [1, 2, 3]}],
+        msg="$not $size 2 matches arrays of size != 2",
+    ),
     QueryTestCase(
         id="and_size_and_all",
         filter={"$and": [{"a": {"$size": 2}}, {"a": {"$all": ["a"]}}]},
