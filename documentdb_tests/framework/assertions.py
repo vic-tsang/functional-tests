@@ -239,6 +239,7 @@ def assertResult(
     msg: Optional[str] = None,
     ignore_order_in: Optional[list[str]] = None,
     ignore_doc_order: bool = False,
+    raw_res: bool = False,
 ):
     """
     Universal assertion that handles success and error cases.
@@ -252,11 +253,14 @@ def assertResult(
             comparison (for fields like set operation results where element
             order is unspecified)
         ignore_doc_order: If True, compare lists ignoring order (duplicates still matter)
+        raw_res: If True, compare the raw result dict instead of
+            extracting cursor.firstBatch
 
     Usage:
         assertResult(result, expected=[{"_id": 1}])  # Success case
         assertResult(result, error_code=16555)  # Error case
         assertResult(result, expected=[{"r": [3, 1, 2]}], ignore_order_in=["r"])
+        assertResult(result, expected={"ok": 1.0}, raw_res=True)  # Raw command result
     """
     if error_code is not None:
         assertFailureCode(result, error_code, msg)
@@ -265,9 +269,28 @@ def assertResult(
             result,
             expected,
             msg,
+            raw_res=raw_res,
             ignore_order_in=ignore_order_in,
             ignore_doc_order=ignore_doc_order,
         )
+
+
+def assertExceptionType(
+    result: Union[Any, Exception], expected_type: type, msg: Optional[str] = None
+):
+    """Assert that the result is an exception of the expected type.
+
+    Useful for client-side errors (e.g. InvalidBSON) that don't carry a
+    server error code.
+    """
+    custom_msg = f" {msg}" if msg else ""
+    error_text = (
+        f"[EXCEPTION_TYPE_MISMATCH]{custom_msg}\n"
+        f"Expected exception type: {expected_type.__name__}\n"
+        f"Actual: {type(result).__name__}: {result}\n"
+    )
+    if not isinstance(result, expected_type):
+        raise AssertionError(error_text)
 
 
 def _replace_nan(val: Any) -> Any:
