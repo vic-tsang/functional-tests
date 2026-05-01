@@ -2,7 +2,8 @@
 Tests for $mod query operator error cases.
 
 Covers array element count validation, non-array arguments, invalid divisor and
-remainder types, NaN/Infinity rejection, division by zero, 64-bit representability.
+remainder types, NaN/Infinity rejection, both divisor and remainder NaN,
+division by zero, 64-bit representability.
 """
 
 from datetime import datetime, timezone
@@ -262,6 +263,14 @@ ERROR_TESTS: list[QueryTestCase] = [
         doc=DOCS,
         error_code=BAD_VALUE_ERROR,
         msg="$mod with Decimal128 -Infinity remainder should error",
+    ),
+    # Both divisor and remainder NaN
+    QueryTestCase(
+        id="divisor_and_remainder_nan",
+        filter={"a": {"$mod": [FLOAT_NAN, FLOAT_NAN]}},
+        doc=DOCS,
+        error_code=BAD_VALUE_ERROR,
+        msg="$mod with NaN divisor and NaN remainder should error",
     ),
     # Division by zero
     QueryTestCase(

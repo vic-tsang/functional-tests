@@ -1,8 +1,9 @@
 """
 Tests for $mod query operator in different field contexts.
 
-Covers array field matching (element traversal, mixed types, empty/nested arrays)
-and nested field paths (dot notation, array indexes, composite paths).
+Covers array field matching (element traversal, mixed types, empty/nested arrays),
+nested field paths (dot notation, array indexes, composite paths), and operator
+combinations ($elemMatch, $all, $size with $mod).
 """
 
 import pytest
@@ -105,7 +106,44 @@ NESTED_TESTS: list[QueryTestCase] = [
     ),
 ]
 
-PARAMETRIZED_TESTS = ARRAY_TESTS + NESTED_TESTS
+COMBINATION_TESTS: list[QueryTestCase] = [
+    QueryTestCase(
+        id="elemMatch_with_mod",
+        filter={"a": {"$elemMatch": {"$mod": [3, 0], "$gte": 6}}},
+        doc=[
+            {"_id": 1, "a": [3, 7]},
+            {"_id": 2, "a": [6, 7]},
+            {"_id": 3, "a": [1, 2]},
+        ],
+        expected=[{"_id": 2, "a": [6, 7]}],
+        msg="$elemMatch with $mod should require same element to satisfy both conditions",
+    ),
+    QueryTestCase(
+        id="all_with_mod",
+        filter={"a": {"$all": [3], "$mod": [3, 0]}},
+        doc=[
+            {"_id": 1, "a": [3, 6]},
+            {"_id": 2, "a": [6, 9]},
+            {"_id": 3, "a": [3, 5]},
+        ],
+        expected=[{"_id": 1, "a": [3, 6]}, {"_id": 3, "a": [3, 5]}],
+        msg="$all combined with $mod should require array contains 3 "
+        "and has element divisible by 3",
+    ),
+    QueryTestCase(
+        id="size_with_mod",
+        filter={"a": {"$size": 2, "$mod": [3, 0]}},
+        doc=[
+            {"_id": 1, "a": [3, 5]},
+            {"_id": 2, "a": [6]},
+            {"_id": 3, "a": [1, 2]},
+        ],
+        expected=[{"_id": 1, "a": [3, 5]}],
+        msg="$size combined with $mod should require array length 2 and element divisible by 3",
+    ),
+]
+
+PARAMETRIZED_TESTS = ARRAY_TESTS + NESTED_TESTS + COMBINATION_TESTS
 
 
 @pytest.mark.parametrize("test", pytest_params(PARAMETRIZED_TESTS))

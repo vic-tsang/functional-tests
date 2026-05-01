@@ -3,7 +3,8 @@ Tests for $mod query operator valid argument handling and boundary values.
 
 Covers valid divisor and remainder types, cross-type divisor/remainder
 combinations, large value divisors, INT32/INT64 boundaries, overflow
-prevention, and Decimal128/double precision boundaries.
+prevention, Decimal128/double precision boundaries, and remainder greater
+than divisor behavior.
 """
 
 import pytest
@@ -279,8 +280,38 @@ PRECISION_TESTS: list[QueryTestCase] = [
     ),
 ]
 
+REMAINDER_GREATER_THAN_DIVISOR_TESTS: list[QueryTestCase] = [
+    QueryTestCase(
+        id="remainder_greater_than_divisor_no_match",
+        filter={"a": {"$mod": [3, 5]}},
+        doc=[{"_id": 1, "a": 3}, {"_id": 2, "a": 5}, {"_id": 3, "a": 8}],
+        expected=[],
+        msg="$mod with remainder > divisor should never match (field % 3 ranges 0-2)",
+    ),
+    QueryTestCase(
+        id="remainder_equal_to_divisor_no_match",
+        filter={"a": {"$mod": [4, 4]}},
+        doc=[{"_id": 1, "a": 4}, {"_id": 2, "a": 8}, {"_id": 3, "a": 0}],
+        expected=[],
+        msg="$mod with remainder == divisor should not match (field % 4 ranges 0-3)",
+    ),
+    QueryTestCase(
+        id="negative_remainder_positive_field_no_match",
+        filter={"a": {"$mod": [3, -1]}},
+        doc=[{"_id": 1, "a": 3}, {"_id": 2, "a": 5}, {"_id": 3, "a": 8}],
+        expected=[],
+        msg="$mod with negative remainder against positive fields "
+        "should not match (positive field % 3 is never -1)",
+    ),
+]
+
 ALL_TESTS = (
-    VALID_TYPE_TESTS + BOUNDARY_TESTS + OVERFLOW_TESTS + DIVISOR_BOUNDARY_TESTS + PRECISION_TESTS
+    VALID_TYPE_TESTS
+    + BOUNDARY_TESTS
+    + OVERFLOW_TESTS
+    + DIVISOR_BOUNDARY_TESTS
+    + PRECISION_TESTS
+    + REMAINDER_GREATER_THAN_DIVISOR_TESTS
 )
 
 
