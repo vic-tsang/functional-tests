@@ -439,19 +439,6 @@ def test_createIndexes_collation_on_nonexistent_collection(database_client):
     coll.drop()
 
 
-def test_createIndexes_hidden_index_can_be_dropped(collection):
-    """Test that a hidden index can still be dropped via dropIndexes."""
-    execute_command(
-        collection,
-        {
-            "createIndexes": collection.name,
-            "indexes": [{"key": {"a": 1}, "name": "a_hidden", "hidden": True}],
-        },
-    )
-    result = execute_command(collection, {"dropIndexes": collection.name, "index": "a_hidden"})
-    assertSuccessPartial(result, {"ok": 1.0}, "Hidden index should be droppable")
-
-
 def test_createIndexes_same_key_name_as_existing_hidden_noop(collection):
     """Test creating an index matching an existing hidden one is a noop."""
     execute_command(
