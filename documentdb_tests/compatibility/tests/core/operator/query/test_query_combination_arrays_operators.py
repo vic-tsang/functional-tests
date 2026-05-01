@@ -1,9 +1,6 @@
 """
-Tests for array operator cross-operator combinations.
-
-Validates $size and $all combined with logical operators ($not, $and, $or, $nor),
-comparison operators ($gt, $gte, $lt, $lte, $eq, $ne, $in, $nin, $exists, $type, $where).
-
+Tests for $size, $all, and $elemMatch combined with logical, comparison,
+element, and evaluation operators, including negation and error cases.
 """
 
 import pytest
@@ -11,11 +8,12 @@ import pytest
 from documentdb_tests.compatibility.tests.core.operator.query.utils.query_test_case import (
     QueryTestCase,
 )
-from documentdb_tests.framework.assertions import assertSuccess
+from documentdb_tests.framework.assertions import assertFailureCode, assertSuccess
+from documentdb_tests.framework.error_codes import BAD_VALUE_ERROR
 from documentdb_tests.framework.executor import execute_command
 from documentdb_tests.framework.parametrize import pytest_params
 
-SIZE_ARRAY_OPS_TESTS: list[QueryTestCase] = [
+SIZE_COMBINATION_ARRAY_OPS_TESTS: list[QueryTestCase] = [
     QueryTestCase(
         id="size_and_all_exact",
         filter={"a": {"$size": 2, "$all": ["a", "b"]}},
@@ -46,11 +44,11 @@ SIZE_ARRAY_OPS_TESTS: list[QueryTestCase] = [
             {"_id": 3, "a": [10, 20]},
         ],
         expected=[{"_id": 1, "a": [10]}],
-        msg="$size 1 with $elemMatch {$gt: 5} matches single-element array with condition",
+        msg="$size 1 with $elemMatch {$gt: 5}",
     ),
 ]
 
-SIZE_LOGICAL_TESTS: list[QueryTestCase] = [
+SIZE_LOGICAL_OPERATOR_TESTS: list[QueryTestCase] = [
     QueryTestCase(
         id="not_size_2_matches_other_sizes",
         filter={"a": {"$not": {"$size": 2}}},
@@ -98,7 +96,7 @@ SIZE_LOGICAL_TESTS: list[QueryTestCase] = [
             {"_id": 3, "a": "x"},
             {"_id": 4, "b": 1},
         ],
-        msg="$nor with $size 0 matches non-empty arrays and non-array fields",
+        msg="$nor with $size 0",
     ),
     QueryTestCase(
         id="multi_field_size",
@@ -109,7 +107,7 @@ SIZE_LOGICAL_TESTS: list[QueryTestCase] = [
             {"_id": 3, "a": [1], "b": [3]},
         ],
         expected=[{"_id": 1, "a": [1, 2], "b": [3]}],
-        msg="$size on multiple fields matches only when both conditions met",
+        msg="$size on multiple fields",
     ),
     QueryTestCase(
         id="and_contradictory_size",
@@ -123,7 +121,7 @@ SIZE_LOGICAL_TESTS: list[QueryTestCase] = [
     ),
 ]
 
-SIZE_COMPARISON_TESTS: list[QueryTestCase] = [
+SIZE_COMBINATION_COMPARISON_TESTS: list[QueryTestCase] = [
     QueryTestCase(
         id="size_and_exists",
         filter={"a": {"$size": 2, "$exists": True}},
@@ -164,23 +162,18 @@ SIZE_COMPARISON_TESTS: list[QueryTestCase] = [
             {"_id": 4, "a": [1, 2, 3]},
         ],
         expected=[{"_id": 2, "a": [1]}],
-        msg="$size 1 combined with $where 'true' returns matching doc",
+        msg="$size 1 combined with $where 'true'",
     ),
 ]
 
-SIZE_COMBINATION_TESTS = SIZE_ARRAY_OPS_TESTS + SIZE_LOGICAL_TESTS + SIZE_COMPARISON_TESTS
+ALL_SIZE_COMBINATION_TESTS = (
+    SIZE_COMBINATION_ARRAY_OPS_TESTS
+    + SIZE_LOGICAL_OPERATOR_TESTS
+    + SIZE_COMBINATION_COMPARISON_TESTS
+)
 
 
-@pytest.mark.parametrize("test", pytest_params(SIZE_COMBINATION_TESTS))
-def test_size_combination(collection, test):
-    """Parametrized test for $size combined with array, logical, and comparison operators."""
-    if test.doc:
-        collection.insert_many(test.doc)
-    result = execute_command(collection, {"find": collection.name, "filter": test.filter})
-    assertSuccess(result, test.expected, ignore_doc_order=True)
-
-
-ALL_CROSS_OPERATOR_TESTS: list[QueryTestCase] = [
+DOLLAR_ALL_CROSS_OPERATOR_TESTS: list[QueryTestCase] = [
     QueryTestCase(
         id="all_with_size",
         filter={"a": {"$all": ["x", "y"], "$size": 2}},
@@ -224,7 +217,7 @@ ALL_CROSS_OPERATOR_TESTS: list[QueryTestCase] = [
     ),
 ]
 
-ALL_LOGICAL_TESTS: list[QueryTestCase] = [
+DOLLAR_ALL_LOGICAL_TESTS: list[QueryTestCase] = [
     QueryTestCase(
         id="all_in_and",
         filter={"$and": [{"a": {"$all": ["x", "y"]}}, {"b": 1}]},
@@ -258,7 +251,7 @@ ALL_LOGICAL_TESTS: list[QueryTestCase] = [
     ),
 ]
 
-ALL_NEGATION_TESTS: list[QueryTestCase] = [
+DOLLAR_ALL_NEGATION_TESTS: list[QueryTestCase] = [
     QueryTestCase(
         id="not_all_excludes_matching",
         filter={"a": {"$not": {"$all": ["x", "y"]}}},
@@ -300,7 +293,7 @@ ALL_NEGATION_TESTS: list[QueryTestCase] = [
     ),
 ]
 
-ALL_COMPARISON_TESTS: list[QueryTestCase] = [
+DOLLAR_ALL_COMPARISON_TESTS: list[QueryTestCase] = [
     QueryTestCase(
         id="all_with_in",
         filter={"a": {"$all": ["x", "y"], "$in": ["x", "z"]}},
@@ -370,14 +363,230 @@ ALL_COMPARISON_TESTS: list[QueryTestCase] = [
     ),
 ]
 
+DOLLAR_ALL_COMBINATION_TESTS = (
+    DOLLAR_ALL_CROSS_OPERATOR_TESTS
+    + DOLLAR_ALL_LOGICAL_TESTS
+    + DOLLAR_ALL_NEGATION_TESTS
+    + DOLLAR_ALL_COMPARISON_TESTS
+)
+
+
+ELEMMATCH_LOGICAL_TESTS: list[QueryTestCase] = [
+    QueryTestCase(
+        id="or_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$or": [{"x": 1}, {"y": 2}]}}},
+        doc=[
+            {"_id": 1, "a": [{"x": 1, "y": 0}]},
+            {"_id": 2, "a": [{"x": 0, "y": 2}]},
+            {"_id": 3, "a": [{"x": 0, "y": 0}]},
+        ],
+        expected=[
+            {"_id": 1, "a": [{"x": 1, "y": 0}]},
+            {"_id": 2, "a": [{"x": 0, "y": 2}]},
+        ],
+        msg="$or inside $elemMatch",
+    ),
+    QueryTestCase(
+        id="implicit_and_multiple_conditions",
+        filter={"a": {"$elemMatch": {"x": {"$gt": 1}, "y": {"$lt": 5}}}},
+        doc=[
+            {"_id": 1, "a": [{"x": 3, "y": 2}]},
+            {"_id": 2, "a": [{"x": 0, "y": 2}]},
+        ],
+        expected=[{"_id": 1, "a": [{"x": 3, "y": 2}]}],
+        msg="Implicit $and via multiple conditions",
+    ),
+    QueryTestCase(
+        id="explicit_and_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$and": [{"x": {"$gt": 1}}, {"y": {"$lt": 5}}]}}},
+        doc=[
+            {"_id": 1, "a": [{"x": 3, "y": 2}]},
+            {"_id": 2, "a": [{"x": 0, "y": 2}]},
+            {"_id": 3, "a": [{"x": 3, "y": 10}]},
+        ],
+        expected=[{"_id": 1, "a": [{"x": 3, "y": 2}]}],
+        msg="Explicit $and inside $elemMatch",
+    ),
+    QueryTestCase(
+        id="not_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$not": {"$gt": 10}}}},
+        doc=[
+            {"_id": 1, "a": [5, 15]},
+            {"_id": 2, "a": [20, 30]},
+        ],
+        expected=[{"_id": 1, "a": [5, 15]}],
+        msg="$not inside $elemMatch — at least one element not > 10",
+    ),
+    QueryTestCase(
+        id="nor_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$nor": [{"x": 1}, {"y": 2}]}}},
+        doc=[
+            {"_id": 1, "a": [{"x": 1, "y": 0}]},
+            {"_id": 2, "a": [{"x": 0, "y": 0}]},
+        ],
+        expected=[{"_id": 2, "a": [{"x": 0, "y": 0}]}],
+        msg="$nor inside $elemMatch",
+    ),
+    QueryTestCase(
+        id="or_with_multiple_elemMatch_in",
+        filter={
+            "$or": [
+                {"a": {"$elemMatch": {"$in": [1, 2]}}},
+                {"a": {"$elemMatch": {"$in": [3, 4]}}},
+            ]
+        },
+        doc=[
+            {"_id": 1, "a": [1, 5]},
+            {"_id": 2, "a": [3, 5]},
+            {"_id": 3, "a": [5, 6]},
+        ],
+        expected=[
+            {"_id": 1, "a": [1, 5]},
+            {"_id": 2, "a": [3, 5]},
+        ],
+        msg="$or with multiple $elemMatch using $in",
+    ),
+]
+
+ELEMMATCH_ELEMENT_EVAL_TESTS: list[QueryTestCase] = [
+    QueryTestCase(
+        id="exists_true_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"x": {"$exists": True}}}},
+        doc=[
+            {"_id": 1, "a": [{"x": 1}, {"y": 2}]},
+            {"_id": 2, "a": [{"y": 2}]},
+        ],
+        expected=[{"_id": 1, "a": [{"x": 1}, {"y": 2}]}],
+        msg="$exists:true inside $elemMatch",
+    ),
+    QueryTestCase(
+        id="exists_false_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"x": {"$exists": False}}}},
+        doc=[
+            {"_id": 1, "a": [{"x": 1}, {"y": 2}]},
+            {"_id": 2, "a": [{"x": 1}]},
+        ],
+        expected=[{"_id": 1, "a": [{"x": 1}, {"y": 2}]}],
+        msg="$exists:false — at least one element without x",
+    ),
+    QueryTestCase(
+        id="type_string_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$type": "string"}}},
+        doc=[
+            {"_id": 1, "a": ["hello", 1]},
+            {"_id": 2, "a": [1, 2]},
+        ],
+        expected=[{"_id": 1, "a": ["hello", 1]}],
+        msg="$type string inside $elemMatch",
+    ),
+    QueryTestCase(
+        id="regex_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$regex": "^abc"}}},
+        doc=[
+            {"_id": 1, "a": ["abcdef", "xyz"]},
+            {"_id": 2, "a": ["xyz", "def"]},
+        ],
+        expected=[{"_id": 1, "a": ["abcdef", "xyz"]}],
+        msg="$regex inside $elemMatch",
+    ),
+    QueryTestCase(
+        id="mod_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$mod": [3, 0]}}},
+        doc=[{"_id": 1, "a": [6, 7]}, {"_id": 2, "a": [1, 2]}],
+        expected=[{"_id": 1, "a": [6, 7]}],
+        msg="$mod inside $elemMatch",
+    ),
+]
+
+ELEMMATCH_NEGATION_TESTS: list[QueryTestCase] = [
+    QueryTestCase(
+        id="not_elemMatch_no_element_gt_5",
+        filter={"a": {"$not": {"$elemMatch": {"$gt": 5}}}},
+        doc=[
+            {"_id": 1, "a": [1, 2, 3]},
+            {"_id": 2, "a": [1, 7]},
+        ],
+        expected=[{"_id": 1, "a": [1, 2, 3]}],
+        msg="$not $elemMatch matches docs where NO element > 5",
+    ),
+    QueryTestCase(
+        id="not_elemMatch_includes_missing_field",
+        filter={"a": {"$not": {"$elemMatch": {"$gt": 5}}}},
+        doc=[{"_id": 1, "b": 1}, {"_id": 2, "a": [7]}],
+        expected=[{"_id": 1, "b": 1}],
+        msg="$not $elemMatch includes docs where field is missing",
+    ),
+    QueryTestCase(
+        id="not_elemMatch_includes_null_field",
+        filter={"a": {"$not": {"$elemMatch": {"$gt": 5}}}},
+        doc=[{"_id": 1, "a": None}, {"_id": 2, "a": [7]}],
+        expected=[{"_id": 1, "a": None}],
+        msg="$not $elemMatch includes docs where field is null",
+    ),
+    QueryTestCase(
+        id="not_elemMatch_includes_scalar_field",
+        filter={"a": {"$not": {"$elemMatch": {"$gt": 5}}}},
+        doc=[{"_id": 1, "a": 3}, {"_id": 2, "a": [7]}],
+        expected=[{"_id": 1, "a": 3}],
+        msg="$not $elemMatch includes docs where field is a scalar",
+    ),
+    QueryTestCase(
+        id="nor_with_elemMatch",
+        filter={"$nor": [{"a": {"$elemMatch": {"$gt": 5}}}]},
+        doc=[
+            {"_id": 1, "a": [1, 2]},
+            {"_id": 2, "a": [1, 7]},
+        ],
+        expected=[{"_id": 1, "a": [1, 2]}],
+        msg="$nor with $elemMatch",
+    ),
+]
+
 ALL_COMBINATION_TESTS = (
-    ALL_CROSS_OPERATOR_TESTS + ALL_LOGICAL_TESTS + ALL_NEGATION_TESTS + ALL_COMPARISON_TESTS
+    ALL_SIZE_COMBINATION_TESTS
+    + DOLLAR_ALL_COMBINATION_TESTS
+    + ELEMMATCH_LOGICAL_TESTS
+    + ELEMMATCH_ELEMENT_EVAL_TESTS
+    + ELEMMATCH_NEGATION_TESTS
 )
 
 
 @pytest.mark.parametrize("test", pytest_params(ALL_COMBINATION_TESTS))
-def test_all_combination(collection, test):
-    """Parametrized test for $all combined with other operators."""
-    collection.insert_many(test.doc)
-    result = execute_command(collection, {"find": collection.name, "filter": test.filter})
+def test_array_operator_combinations(collection, test):
+    """Test $size, $all, and $elemMatch combined with other operators."""
+    if test.doc:
+        collection.insert_many(test.doc)
+    result = execute_command(
+        collection,
+        {"find": collection.name, "filter": test.filter},
+    )
     assertSuccess(result, test.expected, ignore_doc_order=True)
+
+
+ELEMMATCH_RESTRICTED_OPERATOR_ERROR_TESTS: list[QueryTestCase] = [
+    QueryTestCase(
+        id="where_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$where": "true"}}},
+        doc=[{"_id": 1, "a": [1]}],
+        error_code=BAD_VALUE_ERROR,
+        msg="$where inside $elemMatch should fail",
+    ),
+    QueryTestCase(
+        id="text_inside_elemMatch",
+        filter={"a": {"$elemMatch": {"$text": {"$search": "test"}}}},
+        doc=[{"_id": 1, "a": [1]}],
+        error_code=BAD_VALUE_ERROR,
+        msg="$text inside $elemMatch should fail",
+    ),
+]
+
+
+@pytest.mark.parametrize("test", pytest_params(ELEMMATCH_RESTRICTED_OPERATOR_ERROR_TESTS))
+def test_query_combination_elemMatch_errors(collection, test):
+    """Test error cases for restricted operators inside $elemMatch."""
+    collection.insert_many(test.doc)
+    result = execute_command(
+        collection,
+        {"find": collection.name, "filter": test.filter},
+    )
+    assertFailureCode(result, test.error_code)
