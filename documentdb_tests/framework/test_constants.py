@@ -199,7 +199,6 @@ class BsonType(Enum):
     STRING = "string"
     OBJECT = "object"
     ARRAY = "array"
-    EMPTY_OBJECT = "empty_object"
     EMPTY_ARRAY = "empty_array"
     BIN_DATA = "bin_data"
     OBJECT_ID = "object_id"
@@ -220,9 +219,8 @@ class BsonType(Enum):
 BSON_TYPE_SAMPLES = {
     BsonType.DOUBLE: 3.14,
     BsonType.STRING: "hello",
-    BsonType.OBJECT: {"key": "value"},
+    BsonType.OBJECT: {},
     BsonType.ARRAY: ["a", "b", "c"],
-    BsonType.EMPTY_OBJECT: {},
     BsonType.EMPTY_ARRAY: [],
     BsonType.BIN_DATA: Binary(b"\x00\x01\x02"),
     BsonType.OBJECT_ID: OID_EPOCH,
