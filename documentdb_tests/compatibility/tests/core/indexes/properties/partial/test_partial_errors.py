@@ -10,9 +10,9 @@ from documentdb_tests.framework.error_codes import (
     BAD_VALUE_ERROR,
     CANNOT_CREATE_INDEX_ERROR,
     COMMAND_NOT_SUPPORTED_ON_VIEW_ERROR,
-    EXPR_IN_ARRAY_FILTERS_ERROR,
     INDEX_OPTIONS_CONFLICT_ERROR,
     INVALID_OPTIONS_ERROR,
+    QUERY_FEATURE_NOT_ALLOWED,
 )
 from documentdb_tests.framework.executor import execute_command
 from documentdb_tests.framework.parametrize import pytest_params
@@ -81,7 +81,7 @@ PARTIAL_INVALID_OPERATORS: list[IndexTestCase] = [
                 "partialFilterExpression": {"$expr": {"$gt": ["$a", 5]}},
             },
         ),
-        error_code=EXPR_IN_ARRAY_FILTERS_ERROR,
+        error_code=QUERY_FEATURE_NOT_ALLOWED,
         msg="Should reject $expr in partialFilterExpression",
     ),
     IndexTestCase(
