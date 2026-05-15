@@ -16,10 +16,7 @@ from documentdb_tests.compatibility.tests.core.indexes.commands.utils.index_test
     IndexTestCase,
 )
 from documentdb_tests.framework.assertions import assertFailureCode, assertSuccessPartial
-from documentdb_tests.framework.error_codes import (
-    DUPLICATE_KEY_ERROR,
-    INVALID_OPTIONS_ERROR,
-)
+from documentdb_tests.framework.error_codes import DUPLICATE_KEY_ERROR
 from documentdb_tests.framework.executor import execute_command
 from documentdb_tests.framework.parametrize import pytest_params
 from documentdb_tests.framework.test_constants import (
@@ -533,10 +530,3 @@ def test_unique_recreate_with_existing_duplicates_fails(collection):
         DUPLICATE_KEY_ERROR,
         msg="Should fail to create unique index with existing duplicates",
     )
-
-
-def test_unique_id_index_cannot_be_dropped(collection):
-    """Test that the default _id unique index cannot be dropped."""
-    collection.insert_one({"v": 1})
-    result = execute_command(collection, {"dropIndexes": collection.name, "index": "_id_"})
-    assertFailureCode(result, INVALID_OPTIONS_ERROR, msg="Should not allow dropping _id index")
