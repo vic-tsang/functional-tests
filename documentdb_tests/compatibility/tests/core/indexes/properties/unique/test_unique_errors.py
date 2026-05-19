@@ -451,11 +451,9 @@ def test_unique_ordered_batch_single_write_error(collection):
         collection,
         {"insert": collection.name, "documents": [{"v": 2}, {"v": 1}, {"v": 3}], "ordered": True},
     )
-    errors = [{"index": e["index"], "code": e["code"]} for e in result["writeErrors"]]
     assertSuccessPartial(
-        {"ok": 1.0, "errors": errors},
-        {"ok": 1.0, "errors": [{"index": 1, "code": DUPLICATE_KEY_ERROR}]},
-        msg="Ordered batch should have one writeError at index 1 with DuplicateKey code",
+        result,
+        {"writeErrors": [{"index": 1, "code": DUPLICATE_KEY_ERROR}]},
     )
 
 
@@ -492,12 +490,10 @@ def test_unique_unordered_batch_reports_all_duplicates(collection):
         collection,
         {"insert": collection.name, "documents": [{"v": 2}, {"v": 1}, {"v": 1}], "ordered": False},
     )
-    errors = [{"index": e["index"], "code": e["code"]} for e in result["writeErrors"]]
     assertSuccessPartial(
-        {"ok": 1.0, "errors": errors},
+        result,
         {
-            "ok": 1.0,
-            "errors": [
+            "writeErrors": [
                 {"index": 1, "code": DUPLICATE_KEY_ERROR},
                 {"index": 2, "code": DUPLICATE_KEY_ERROR},
             ],
