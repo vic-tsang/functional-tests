@@ -16,12 +16,17 @@ TESTS: list[QueryTestCase] = [
         filter={
             "$and": [
                 {"loc": {"$geoWithin": {"$center": [[0, 0], 5]}}},
-                {"loc": {"$geoWithin": {"$center": [[1, 1], 5]}}},
+                {"loc": {"$geoWithin": {"$center": [[8, 0], 5]}}},
             ]
         },
-        doc=[{"_id": 1, "loc": [0, 0]}],
-        expected=[{"_id": 1, "loc": [0, 0]}],
-        msg="Should handle two $geoWithin on same field",
+        doc=[
+            {"_id": 1, "loc": [0, 0]},
+            {"_id": 2, "loc": [5, 0]},
+            {"_id": 3, "loc": [8, 0]},
+            {"_id": 4, "loc": [20, 20]},
+        ],
+        expected=[{"_id": 2, "loc": [5, 0]}],
+        msg="Should return only docs in intersection of both circles",
     ),
     QueryTestCase(
         id="combined_with_equality",

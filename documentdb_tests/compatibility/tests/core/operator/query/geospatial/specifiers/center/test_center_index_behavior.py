@@ -25,27 +25,6 @@ def test_center_with_2d_index_same_results(collection):
     )
 
 
-def test_center_with_2d_index_excludes_geojson(collection):
-    """Test $center with 2d index returns legacy coordinate documents."""
-    collection.insert_many(
-        [
-            {"_id": 1, "loc": [0, 0]},
-            {"_id": 2, "loc": [1, 1]},
-        ]
-    )
-    collection.create_index([("loc", "2d")])
-    result = execute_command(
-        collection,
-        {"find": collection.name, "filter": {"loc": {"$geoWithin": {"$center": [[0, 0], 5]}}}},
-    )
-    assertSuccess(
-        result,
-        [{"_id": 1, "loc": [0, 0]}, {"_id": 2, "loc": [1, 1]}],
-        ignore_doc_order=True,
-        msg="Should return legacy coordinate documents with 2d index",
-    )
-
-
 def test_center_with_2d_index_custom_bounds(collection):
     """Test $center with 2d index using custom min/max bounds."""
     collection.create_index([("loc", "2d")], min=-500, max=500)
@@ -156,27 +135,6 @@ def test_center_outside_2d_index_bounds(collection):
         [{"_id": 1, "loc": [0, 0]}, {"_id": 2, "loc": [50, 50]}],
         ignore_doc_order=True,
         msg="Should handle center outside 2d index bounds",
-    )
-
-
-def test_center_2d_index_mixed_legacy_and_geojson(collection):
-    """Test $center with 2d index on collection with both legacy and GeoJSON documents."""
-    collection.create_index([("loc", "2d")])
-    collection.insert_many(
-        [
-            {"_id": 1, "loc": [5, 5]},
-            {"_id": 3, "loc": [50, 50]},
-        ]
-    )
-    result = execute_command(
-        collection,
-        {"find": collection.name, "filter": {"loc": {"$geoWithin": {"$center": [[0, 0], 10]}}}},
-    )
-    assertSuccess(
-        result,
-        [{"_id": 1, "loc": [5, 5]}],
-        ignore_doc_order=True,
-        msg="Should match only legacy coordinate docs when 2d index exists",
     )
 
 
