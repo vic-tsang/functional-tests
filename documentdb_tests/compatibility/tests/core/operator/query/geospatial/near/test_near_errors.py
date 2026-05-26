@@ -316,7 +316,6 @@ def test_near_in_aggregate_match_errors(collection):
 
 def test_near_combined_with_text_errors(collection):
     """Verifies $near cannot be combined with $text in the same query."""
-    collection.create_index([("loc", "2dsphere")])
     collection.create_index([("name", "text")])
     result = execute_command(
         collection,

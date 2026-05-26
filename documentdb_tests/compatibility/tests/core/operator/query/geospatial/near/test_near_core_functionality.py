@@ -83,6 +83,35 @@ def test_near_core(collection, test):
     assertSuccess(result, test.expected, msg=test.msg)
 
 
+@pytest.mark.usefixtures("geo_2dsphere")
+def test_near_explicit_sort_overrides_distance(collection):
+    """Verifies explicit sort overrides $near distance ordering."""
+    collection.insert_many(
+        [
+            {"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}, "rank": 3},
+            {"_id": 2, "loc": {"type": "Point", "coordinates": [1, 0]}, "rank": 1},
+            {"_id": 3, "loc": {"type": "Point", "coordinates": [2, 0]}, "rank": 2},
+        ]
+    )
+    result = execute_command(
+        collection,
+        {
+            "find": collection.name,
+            "filter": {"loc": {"$near": {"$geometry": {"type": "Point", "coordinates": [0, 0]}}}},
+            "sort": {"rank": 1},
+        },
+    )
+    assertSuccess(
+        result,
+        [
+            {"_id": 2, "loc": {"type": "Point", "coordinates": [1, 0]}, "rank": 1},
+            {"_id": 3, "loc": {"type": "Point", "coordinates": [2, 0]}, "rank": 2},
+            {"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}, "rank": 3},
+        ],
+        msg="Should sort by explicit field, overriding distance",
+    )
+
+
 def test_near_nested_field(collection):
     """Verifies $near works on nested field path."""
     collection.create_index([("address.location", "2dsphere")])
