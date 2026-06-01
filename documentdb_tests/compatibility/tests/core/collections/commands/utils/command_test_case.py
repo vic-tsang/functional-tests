@@ -57,13 +57,18 @@ class CommandTestCase(BaseTestCase):
     Attributes:
         target_collection: Describes the collection to execute against.
             Defaults to the fixture collection.
+        siblings: Optional additional collections to create alongside the
+            source before executing the command.
         indexes: Indexes to create before executing the command. Each
             entry is passed to create_index.
         docs: Documents to insert before executing the command.
         command: A callable (CommandContext -> dict) for commands that
             need fixture values, or a plain dict.
         expected: A callable (CommandContext -> dict) for results that
-            need fixture values, a plain dict, or None for error cases.
+            need fixture values, a plain dict, a list of dicts, or None
+            for error cases.
+        ignore_order_in: Optional names of result fields whose array contents
+            should be compared without regard to element order.
     """
 
     target_collection: TargetCollection = field(default_factory=TargetCollection)
@@ -72,26 +77,33 @@ class CommandTestCase(BaseTestCase):
     docs: list[dict[str, Any]] | None = None
     command: dict[str, Any] | Callable[..., dict[str, Any]] | None = None
     expected: dict[str, Any] | list[dict[str, Any]] | Callable[..., dict[str, Any]] | None = None
+    ignore_order_in: list[str] | None = None
 
     def prepare(self, db: Database, collection: Collection) -> Collection:
         """Resolve the target collection and apply indexes/docs.
+
+        Documents and indexes are inserted into the collection returned
+        by ``target_collection.writable(source, resolved)``. For views
+        this is the source; for regular collections it is the resolved
+        collection itself.
 
         - If ``docs=None``, the collection is not created and will not exist.
         - If ``docs=[]``, the collection is explicitly created but left empty.
         - If ``docs=[...]``, the collection is created and documents are inserted.
         """
-        collection = self.target_collection.resolve(db, collection)
+        resolved = self.target_collection.resolve(db, collection)
+        target = self.target_collection.writable(collection, resolved)
         if self.indexes:
-            collection.create_indexes(self.indexes)
+            target.create_indexes(self.indexes)
         if self.docs is not None:
-            if collection.name not in collection.database.list_collection_names():
-                collection.database.create_collection(collection.name)
+            if target.name not in target.database.list_collection_names():
+                target.database.create_collection(target.name)
             if self.docs:
-                collection.insert_many(self.docs)
+                target.insert_many(self.docs)
         if self.siblings:
             for sibling in self.siblings:
-                sibling.create(db, collection)
-        return collection
+                sibling.create(db, resolved)
+        return resolved
 
     def build_command(self, ctx: CommandContext) -> dict[str, Any]:
         """Resolve the command dict from a callable or plain dict."""

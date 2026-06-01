@@ -13,6 +13,7 @@ from typing import Any
 
 from pymongo.collection import Collection
 from pymongo.database import Database
+from pymongo.operations import IndexModel
 
 
 @dataclass(frozen=True)
@@ -22,15 +23,29 @@ class TargetCollection:
     def resolve(self, db: Database, collection: Collection) -> Collection:
         return collection
 
+    def writable(self, source: Collection, resolved: Collection) -> Collection:
+        """Return the collection where docs and indexes should be inserted."""
+        return resolved
+
 
 @dataclass(frozen=True)
 class ViewCollection(TargetCollection):
-    """A view on the fixture collection."""
+    """A view on the fixture collection.
+
+    Pass any extra keyword arguments accepted by the ``create`` command
+    (e.g. ``pipeline``, ``collation``) via the ``options`` dict.
+    """
+
+    options: dict[str, Any] = field(default_factory=dict)
+    suffix: str = "_view"
 
     def resolve(self, db: Database, collection: Collection) -> Collection:
-        view_name = f"{collection.name}_view"
-        db.command("create", view_name, viewOn=collection.name, pipeline=[])
+        view_name = f"{collection.name}{self.suffix}"
+        db.command("create", view_name, viewOn=collection.name, **self.options)
         return db[view_name]
+
+    def writable(self, source: Collection, resolved: Collection) -> Collection:
+        return source
 
 
 @dataclass(frozen=True)
@@ -57,6 +72,23 @@ class CustomCollection(TargetCollection):
         name = f"{collection.name}_custom"
         db.command("create", name, **self.options)
         return db[name]
+
+
+@dataclass(frozen=True)
+class ViewOnCustomCollection(TargetCollection):
+    """A view on a custom collection created with arbitrary options."""
+
+    source_options: dict[str, Any] = field(default_factory=dict)
+
+    def resolve(self, db: Database, collection: Collection) -> Collection:
+        src_name = f"{collection.name}_custom_src"
+        db.command("create", src_name, **self.source_options)
+        view_name = f"{collection.name}_custom_view"
+        db.command("create", view_name, viewOn=src_name, pipeline=[])
+        return db[view_name]
+
+    def writable(self, source: Collection, resolved: Collection) -> Collection:
+        return source.database[f"{source.name}_custom_src"]
 
 
 @dataclass(frozen=True)
@@ -132,6 +164,9 @@ class ViewChainCollection(TargetCollection):
             source = name
         return db[source]
 
+    def writable(self, source: Collection, resolved: Collection) -> Collection:
+        return source
+
 
 @dataclass(frozen=True)
 class ExistingCollection(TargetCollection):
@@ -150,19 +185,14 @@ class ExistingCollection(TargetCollection):
 class TimeseriesCollection(TargetCollection):
     """A time series collection."""
 
-    time_field: str = "ts"
-    meta_field: str = "meta"
-    granularity: str | None = None
+    timeseries_options: dict[str, Any] = field(
+        default_factory=lambda: {"timeField": "ts", "metaField": "meta"}
+    )
+    create_options: dict[str, Any] = field(default_factory=dict)
 
     def resolve(self, db: Database, collection: Collection) -> Collection:
         name = f"{collection.name}_ts"
-        ts_opts: dict[str, Any] = {
-            "timeField": self.time_field,
-            "metaField": self.meta_field,
-        }
-        if self.granularity is not None:
-            ts_opts["granularity"] = self.granularity
-        db.create_collection(name, timeseries=ts_opts)
+        db.create_collection(name, timeseries=self.timeseries_options, **self.create_options)
         return db[name]
 
 
@@ -172,29 +202,26 @@ class SystemBucketsCollection(TimeseriesCollection):
 
     def resolve(self, db: Database, collection: Collection) -> Collection:
         name = f"{collection.name}_ts"
-        ts_opts: dict[str, Any] = {
-            "timeField": self.time_field,
-            "metaField": self.meta_field,
-        }
-        if self.granularity is not None:
-            ts_opts["granularity"] = self.granularity
-        db.create_collection(name, timeseries=ts_opts)
+        db.create_collection(name, timeseries=self.timeseries_options, **self.create_options)
         return db[f"system.buckets.{name}"]
 
 
-@dataclass(frozen=True)
-class ViewWithPipelineCollection(TargetCollection):
+def ViewWithPipelineCollection() -> ViewCollection:
     """A view on the fixture collection with a non-empty pipeline."""
+    return ViewCollection(options={"pipeline": [{"$match": {"x": 1}}]}, suffix="_vpipe")
+
+
+@dataclass(frozen=True)
+class OrphanedViewCollection(TargetCollection):
+    """A view whose source collection does not exist."""
 
     def resolve(self, db: Database, collection: Collection) -> Collection:
-        view_name = f"{collection.name}_vpipe"
-        db.command(
-            "create",
-            view_name,
-            viewOn=collection.name,
-            pipeline=[{"$match": {"x": 1}}],
-        )
+        view_name = f"{collection.name}_orphan"
+        db.command("create", view_name, viewOn="nonexistent_source")
         return db[view_name]
+
+    def writable(self, source: Collection, resolved: Collection) -> Collection:
+        return source
 
 
 @dataclass(frozen=True)
@@ -319,17 +346,49 @@ class ExtraCollections(TargetCollection):
 
 
 @dataclass(frozen=True)
+class CollectionWithView(TargetCollection):
+    """A collection with a view created on top of it.
+
+    Creates the source collection, then creates a view on it with
+    ``view_options``. Resolves to the source collection so tests can
+    verify the view does not affect the underlying collection.
+    """
+
+    view_options: dict[str, Any] = field(default_factory=dict)
+
+    def resolve(self, db: Database, collection: Collection) -> Collection:
+        source_name = f"{collection.name}_source"
+        db.command("create", source_name)
+        view_name = f"{collection.name}_view"
+        db.command("create", view_name, viewOn=source_name, pipeline=[], **self.view_options)
+        return db[source_name]
+
+
+@dataclass(frozen=True)
 class SiblingCollection:
     """Describes an additional collection to create alongside the source.
 
     The collection is named ``{fixture_name}{suffix}`` and created with
     the specified options. Documents are inserted if provided.
+
+    Attributes:
+        suffix: Appended to the source collection name to form the
+            sibling's name.
+        view_on_source: If True, create the sibling as a view on the
+            source collection.
+        timeseries_field: If set, create the sibling as a time-series
+            collection using this field as the time field. Ignored when
+            view_on_source is True.
+        docs: Optional documents to insert into the sibling.
     """
 
     suffix: str = "_target"
     view_on_source: bool = False
     timeseries_field: str | None = None
+    validator: dict[str, Any] | None = None
+    collation: dict[str, Any] | None = None
     docs: list[dict[str, Any]] | None = None
+    indexes: list[IndexModel] | None = None
 
     def create(self, db: Database, collection: Collection) -> None:
         """Create the sibling collection."""
@@ -338,7 +397,15 @@ class SiblingCollection:
             db.create_collection(name, viewOn=collection.name, pipeline=[])
         elif self.timeseries_field:
             db.create_collection(name, timeseries={"timeField": self.timeseries_field})
+        elif self.validator:
+            db.create_collection(name, validator=self.validator)
+        elif self.collation:
+            db.create_collection(name, collation=self.collation)
         else:
             db.create_collection(name)
+        if self.indexes:
+            db[name].create_indexes(self.indexes)
         if self.docs:
             db[name].insert_many(self.docs)
+        if self.indexes:
+            db[name].create_indexes(self.indexes)
