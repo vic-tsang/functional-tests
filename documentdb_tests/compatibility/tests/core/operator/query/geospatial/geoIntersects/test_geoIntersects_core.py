@@ -1,7 +1,7 @@
 """
 Tests for $geoIntersects core functionality — null/missing field handling,
 field type validation, GeoJSON type intersection, valid geometry types,
-degenerate geometry, and basic intersection behavior.
+degenerate geometry, legacy coordinate parsing, and basic intersection behavior.
 """
 
 import pytest
@@ -684,14 +684,44 @@ VALID_GEOMETRY_TYPE_TESTS: list[QueryTestCase] = [
 
 QUIRKY_BEHAVIOR_TESTS: list[QueryTestCase] = [
     QueryTestCase(
-        id="invalid_geometry_array_returns_empty",
+        id="legacy_coordinates_array_match",
+        filter={"loc": {"$geoIntersects": {"$geometry": [0, 0]}}},
+        doc=[
+            {"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}},
+            {"_id": 2, "loc": {"type": "Point", "coordinates": [5, 5]}},
+        ],
+        expected=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        msg="Legacy coordinate array matches point at same location",
+    ),
+    QueryTestCase(
+        id="legacy_coordinates_array_no_match",
         filter={"loc": {"$geoIntersects": {"$geometry": [1, 2]}}},
         doc=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
         expected=[],
-        msg="Invalid array $geometry value silently returns no results",
+        msg="Legacy coordinate array does not match point at different location",
     ),
     QueryTestCase(
-        id="invalid_coordinates_as_object_matches",
+        id="legacy_doc_two_numeric_fields_match",
+        filter={"loc": {"$geoIntersects": {"$geometry": {"x": 0, "y": 0}}}},
+        doc=[
+            {"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}},
+            {"_id": 2, "loc": {"type": "Point", "coordinates": [5, 5]}},
+        ],
+        expected=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        msg="Legacy doc form with 2 numeric fields matches point at same location",
+    ),
+    QueryTestCase(
+        id="legacy_doc_arbitrary_field_names_match",
+        filter={"loc": {"$geoIntersects": {"$geometry": {"a": 0, "b": 0}}}},
+        doc=[
+            {"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}},
+            {"_id": 2, "loc": {"type": "Point", "coordinates": [5, 5]}},
+        ],
+        expected=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        msg="Legacy doc form with arbitrary field names matches if values are numeric",
+    ),
+    QueryTestCase(
+        id="coordinates_object_two_numeric_fields_matches",
         filter={
             "loc": {
                 "$geoIntersects": {
@@ -704,7 +734,55 @@ QUIRKY_BEHAVIOR_TESTS: list[QueryTestCase] = [
         },
         doc=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
         expected=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
-        msg="Invalid coordinates as object is treated as valid",
+        msg="Coordinates object with 2 numeric fields matches",
+    ),
+    QueryTestCase(
+        id="coordinates_object_non_numeric_in_pos3_matches",
+        filter={
+            "loc": {
+                "$geoIntersects": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": {"x": 0, "y": 0, "z": "str"},
+                    }
+                }
+            }
+        },
+        doc=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        expected=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        msg="Coordinates object with non-numeric in position 3 still matches",
+    ),
+    QueryTestCase(
+        id="coordinates_object_three_numeric_fields_matches",
+        filter={
+            "loc": {
+                "$geoIntersects": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": {"a": 0, "b": 0, "c": 99},
+                    }
+                }
+            }
+        },
+        doc=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        expected=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        msg="Coordinates object with 3 numeric fields still matches",
+    ),
+    QueryTestCase(
+        id="coordinates_object_numeric_pos1_2_non_numeric_pos3_matches",
+        filter={
+            "loc": {
+                "$geoIntersects": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": {"a": 0, "b": 0, "c": "str"},
+                    }
+                }
+            }
+        },
+        doc=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        expected=[{"_id": 1, "loc": {"type": "Point", "coordinates": [0, 0]}}],
+        msg="Coordinates object with numeric in pos 1-2 and non-numeric in pos 3 still matches",
     ),
     QueryTestCase(
         id="extra_fields_in_geometry_ignored",

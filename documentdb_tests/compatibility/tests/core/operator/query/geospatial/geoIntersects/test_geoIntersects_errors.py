@@ -1,7 +1,8 @@
 """
 Tests for $geoIntersects error cases — invalid arguments, invalid geometry,
-coordinate validation, polygon validation, syntax errors, operator combination errors,
-NaN/Infinity, CRS type restrictions, and extra operator errors.
+coordinate validation, legacy coordinate doc form validation, polygon validation,
+syntax errors, operator combination errors, NaN/Infinity, CRS type restrictions,
+and extra operator errors.
 """
 
 import pytest
@@ -117,6 +118,30 @@ INVALID_GEOMETRY_TESTS: list[QueryTestCase] = [
         error_code=BAD_VALUE_ERROR,
         msg="$geometry type Feature should error",
     ),
+    QueryTestCase(
+        id="legacy_doc_three_fields_with_non_numeric",
+        filter={"loc": {"$geoIntersects": {"$geometry": {"z": "str", "x": 0, "y": 0}}}},
+        error_code=BAD_VALUE_ERROR,
+        msg="Legacy doc form with 3 fields including non-numeric in first position should error",
+    ),
+    QueryTestCase(
+        id="legacy_doc_three_fields_non_numeric_last",
+        filter={"loc": {"$geoIntersects": {"$geometry": {"x": 0, "y": 0, "z": "str"}}}},
+        error_code=BAD_VALUE_ERROR,
+        msg="Legacy doc form with 3 fields including non-numeric in last position should error",
+    ),
+    QueryTestCase(
+        id="legacy_doc_three_fields_all_numeric",
+        filter={"loc": {"$geoIntersects": {"$geometry": {"x": 0, "y": 0, "z": 99}}}},
+        error_code=BAD_VALUE_ERROR,
+        msg="Legacy doc form with 3 numeric fields should error",
+    ),
+    QueryTestCase(
+        id="legacy_doc_single_field",
+        filter={"loc": {"$geoIntersects": {"$geometry": {"x": 0}}}},
+        error_code=BAD_VALUE_ERROR,
+        msg="Legacy doc form with single field should error",
+    ),
 ]
 
 
@@ -140,6 +165,44 @@ INVALID_COORDINATES_TESTS: list[QueryTestCase] = [
         },
         error_code=BAD_VALUE_ERROR,
         msg="Non-numeric coordinate values should error",
+    ),
+    QueryTestCase(
+        id="coordinates_object_non_numeric_in_pos1",
+        filter={
+            "loc": {
+                "$geoIntersects": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": {"z": "str", "x": 0, "y": 0},
+                    }
+                }
+            }
+        },
+        error_code=BAD_VALUE_ERROR,
+        msg="Coordinates object with non-numeric in position 1 should error",
+    ),
+    QueryTestCase(
+        id="coordinates_object_non_numeric_first_of_three",
+        filter={
+            "loc": {
+                "$geoIntersects": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": {"a": "str", "b": 0, "c": 0},
+                    }
+                }
+            }
+        },
+        error_code=BAD_VALUE_ERROR,
+        msg="Coordinates object with non-numeric in first position should error",
+    ),
+    QueryTestCase(
+        id="coordinates_object_single_field",
+        filter={
+            "loc": {"$geoIntersects": {"$geometry": {"type": "Point", "coordinates": {"x": 0}}}}
+        },
+        error_code=BAD_VALUE_ERROR,
+        msg="Coordinates object with single field should error",
     ),
 ]
 
