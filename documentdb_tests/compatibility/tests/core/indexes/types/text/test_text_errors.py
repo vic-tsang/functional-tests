@@ -54,23 +54,20 @@ def test_text_two_indexes_fails(collection):
     assertFailureCode(result, INDEX_OPTIONS_CONFLICT_ERROR, msg="Two text indexes should fail")
 
 
-def test_text_on_non_simple_collation_fails(database_client):
+def test_text_on_non_simple_collation_fails(database_client, collection):
     """Test text index on a collection with non-simple collation fails.
 
     Text indexes do not support collation; the collection's non-simple
     collation is inherited unless overridden with locale 'simple'.
     """
-    coll = database_client["text_non_simple_collation_test"]
-    coll.drop()
-    database_client.create_collection(coll.name, collation={"locale": "en"})
+    database_client.create_collection(collection.name, collation={"locale": "en"})
     result = execute_command(
-        coll,
-        {"createIndexes": coll.name, "indexes": [{"key": {"a": "text"}, "name": "a_text"}]},
+        collection,
+        {"createIndexes": collection.name, "indexes": [{"key": {"a": "text"}, "name": "a_text"}]},
     )
     assertFailureCode(
         result, CANNOT_CREATE_INDEX_ERROR, msg="Text index on non-simple collation should fail"
     )
-    coll.drop()
 
 
 def test_text_index_version_zero_fails(collection):
