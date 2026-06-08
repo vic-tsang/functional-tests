@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime as _datetime
 from typing import Any
 
-from bson import Binary, Decimal128, Int64
+from bson import Binary, Decimal128, Int64, ObjectId, Timestamp
 
 from documentdb_tests.framework.bson_compare import _NUMERIC_BSON_TYPES, strict_equal
 
@@ -79,6 +79,8 @@ class IsType(Check):
         Int64: "long",
         Decimal128: "decimal",
         _datetime: "date",
+        ObjectId: "objectId",
+        Timestamp: "timestamp",
     }
 
     _VALID_TYPES: set[str] = set(_PY_TO_BSON.values())
