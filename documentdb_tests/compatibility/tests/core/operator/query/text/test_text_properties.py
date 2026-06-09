@@ -104,7 +104,7 @@ NON_STRING_TYPE_TESTS: list[QueryTestCase] = [
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": {"nested": "hello"}}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Object field should not be indexed by text index",
+        msg="$text should not match text in object field",
     ),
     QueryTestCase(
         id="data_decimal128_field",
