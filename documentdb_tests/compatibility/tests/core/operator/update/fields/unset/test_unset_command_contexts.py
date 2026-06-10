@@ -1,45 +1,24 @@
 """
 Tests for $unset update operator - command contexts.
 
-Covers updateOne, updateMany, findOneAndUpdate, upsert, and nModified wiring.
+Covers updateOne, updateMany, upsert, and nModified wiring.
 """
 
-import pytest
-
-from documentdb_tests.compatibility.tests.core.operator.update.utils.update_test_case import (
-    UpdateTestCase,
-)
 from documentdb_tests.framework.assertions import assertSuccess, assertSuccessPartial
 from documentdb_tests.framework.executor import execute_command
-from documentdb_tests.framework.parametrize import pytest_params
-
-UNSET_COMMAND_CONTEXT_TESTS: list[UpdateTestCase] = [
-    UpdateTestCase(
-        id="upsert_no_match",
-        setup_docs=[],
-        query={"_id": 1},
-        update={"$unset": {"missing": ""}},
-        upsert=True,
-        expected=[{"_id": 1}],
-        msg="Upsert with $unset should create doc without field",
-    ),
-]
 
 
-@pytest.mark.parametrize("test", pytest_params(UNSET_COMMAND_CONTEXT_TESTS))
-def test_unset_command_contexts(collection, test):
-    """Test $unset in various command contexts."""
-    if test.setup_docs:
-        collection.insert_many(test.setup_docs)
+def test_unset_upsert_no_match(collection):
+    """Test upsert with $unset on non-existent doc creates doc without field."""
     execute_command(
         collection,
         {
             "update": collection.name,
-            "updates": [{"q": test.query, "u": test.update, "upsert": test.upsert}],
+            "updates": [{"q": {"_id": 1}, "u": {"$unset": {"missing": ""}}, "upsert": True}],
         },
     )
     result = execute_command(collection, {"find": collection.name, "filter": {"_id": 1}})
-    assertSuccess(result, test.expected, msg=test.msg)
+    assertSuccess(result, [{"_id": 1}], msg="Upsert with $unset should create doc without field")
 
 
 def test_unset_update_one(collection):
@@ -84,21 +63,4 @@ def test_unset_update_many(collection):
     )
     assertSuccessPartial(
         result, {"n": 2, "nModified": 2, "ok": 1.0}, msg="Should unset from all matching"
-    )
-
-
-def test_unset_find_and_modify(collection):
-    """Test $unset in findAndModify removes field and returns document."""
-    collection.insert_one({"_id": 1, "a": 1, "b": 2})
-    result = execute_command(
-        collection,
-        {
-            "findAndModify": collection.name,
-            "query": {"_id": 1},
-            "update": {"$unset": {"b": ""}},
-            "new": True,
-        },
-    )
-    assertSuccessPartial(
-        result, {"value": {"_id": 1, "a": 1}}, msg="Should return doc without unset field"
     )

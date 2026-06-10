@@ -12,7 +12,7 @@ from bson import Binary, Code, MaxKey, MinKey, Regex
 from documentdb_tests.compatibility.tests.core.operator.update.utils.update_test_case import (
     UpdateTestCase,
 )
-from documentdb_tests.framework.assertions import assertSuccess
+from documentdb_tests.framework.assertions import assertSuccess, assertSuccessPartial
 from documentdb_tests.framework.executor import execute_command
 from documentdb_tests.framework.parametrize import pytest_params
 from documentdb_tests.framework.test_constants import (
@@ -219,15 +219,16 @@ def test_re_unset_already_removed_field(collection):
             "updates": [{"q": {"_id": 1}, "u": {"$unset": {"a": ""}}}],
         },
     )
-    execute_command(
+    result = execute_command(
         collection,
         {
             "update": collection.name,
             "updates": [{"q": {"_id": 1}, "u": {"$unset": {"a": ""}}}],
         },
     )
-    result = execute_command(collection, {"find": collection.name, "filter": {"_id": 1}})
-    assertSuccess(result, [{"_id": 1, "b": 2}], msg="Re-unset should be no-op")
+    assertSuccessPartial(
+        result, {"n": 1, "nModified": 0, "ok": 1.0}, msg="Re-unset should be no-op"
+    )
 
 
 def test_unset_distinct_from_set_null(collection):

@@ -2,7 +2,7 @@
 Tests for $unset update operator - argument handling.
 
 Covers empty operand, empty operand with upsert, single field, multiple fields,
-numeric-string field names, and partial field removal.
+numeric-string field names, partial field removal, and mixed existing/missing fields.
 """
 
 import pytest
@@ -46,6 +46,14 @@ UNSET_ARGUMENT_SUCCESS_TESTS: list[UpdateTestCase] = [
         update={"$unset": {"a": "", "c": ""}},
         expected=[{"_id": 1, "b": 2, "d": 4}],
         msg="Should remove only specified fields, leaving others intact",
+    ),
+    UpdateTestCase(
+        id="existing_and_missing_field",
+        setup_docs=[{"_id": 1, "a": 1, "b": 2}],
+        query={"_id": 1},
+        update={"$unset": {"a": "", "missing": ""}},
+        expected=[{"_id": 1, "b": 2}],
+        msg="Should remove existing field and silently ignore missing field",
     ),
 ]
 
