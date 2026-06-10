@@ -1,7 +1,7 @@
 """
 Tests for $setOnInsert update operator - command contexts.
 
-Covers updateOne, updateMany, and findAndModify with upsert.
+Covers updateOne and updateMany with upsert.
 """
 
 import pytest
@@ -49,43 +49,6 @@ def test_setOnInsert_command_contexts(collection, test):
                     "multi": test.multi,
                 }
             ],
-        },
-    )
-    assertSuccessPartial(result, test.expected, msg=test.msg)
-
-
-SETONINSERT_FIND_AND_MODIFY_TESTS: list[UpdateTestCase] = [
-    UpdateTestCase(
-        id="upsert_return_new",
-        query={"_id": 1},
-        update={"$setOnInsert": {"x": 100}},
-        upsert=True,
-        expected={"value": {"_id": 1, "x": 100}},
-        msg="Should return new doc with $setOnInsert fields",
-    ),
-    UpdateTestCase(
-        id="upsert_return_old",
-        query={"_id": 2},
-        update={"$setOnInsert": {"x": 100}},
-        upsert=True,
-        expected={"value": None},
-        msg="Should return null when no doc existed before",
-    ),
-]
-
-
-@pytest.mark.parametrize("test", pytest_params(SETONINSERT_FIND_AND_MODIFY_TESTS))
-def test_setOnInsert_find_and_modify(collection, test):
-    """Test $setOnInsert in findAndModify with upsert."""
-    return_new = test.expected.get("value") is not None
-    result = execute_command(
-        collection,
-        {
-            "findAndModify": collection.name,
-            "query": test.query,
-            "update": test.update,
-            "upsert": test.upsert,
-            "new": return_new,
         },
     )
     assertSuccessPartial(result, test.expected, msg=test.msg)

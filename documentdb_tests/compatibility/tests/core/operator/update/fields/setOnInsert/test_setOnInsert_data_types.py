@@ -11,11 +11,13 @@ from bson import Decimal128
 from documentdb_tests.compatibility.tests.core.operator.update.utils.update_test_case import (
     UpdateTestCase,
 )
-from documentdb_tests.framework.assertions import assertSuccess
+from documentdb_tests.framework.assertions import assertSuccess, assertSuccessNaN
 from documentdb_tests.framework.executor import execute_command
 from documentdb_tests.framework.parametrize import pytest_params
 from documentdb_tests.framework.test_constants import (
+    DECIMAL128_NAN,
     DECIMAL128_NEGATIVE_ZERO,
+    FLOAT_NAN,
 )
 
 SETONINSERT_TYPE_DISTINCTION_TESTS: list[UpdateTestCase] = [
@@ -82,6 +84,40 @@ def test_setOnInsert_type_distinction(collection, test):
     )
     result = execute_command(collection, {"find": collection.name, "filter": {"_id": 1}})
     assertSuccess(result, test.expected, msg=test.msg)
+
+
+SETONINSERT_NAN_TESTS: list[UpdateTestCase] = [
+    UpdateTestCase(
+        id="preserves_double_nan",
+        query={"_id": 1},
+        update={"$setOnInsert": {"field": FLOAT_NAN}},
+        upsert=True,
+        expected=[{"_id": 1, "field": FLOAT_NAN}],
+        msg="Should preserve double NaN",
+    ),
+    UpdateTestCase(
+        id="preserves_decimal128_nan",
+        query={"_id": 1},
+        update={"$setOnInsert": {"field": DECIMAL128_NAN}},
+        upsert=True,
+        expected=[{"_id": 1, "field": DECIMAL128_NAN}],
+        msg="Should preserve Decimal128 NaN",
+    ),
+]
+
+
+@pytest.mark.parametrize("test", pytest_params(SETONINSERT_NAN_TESTS))
+def test_setOnInsert_nan_types(collection, test):
+    """Test $setOnInsert preserves NaN values."""
+    execute_command(
+        collection,
+        {
+            "update": collection.name,
+            "updates": [{"q": test.query, "u": test.update, "upsert": test.upsert}],
+        },
+    )
+    result = execute_command(collection, {"find": collection.name, "filter": {"_id": 1}})
+    assertSuccessNaN(result, test.expected, msg=test.msg)
 
 
 SETONINSERT_BOOL_VS_INT_TESTS: list[UpdateTestCase] = [

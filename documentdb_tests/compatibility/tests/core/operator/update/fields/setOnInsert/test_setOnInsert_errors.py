@@ -70,6 +70,30 @@ SETONINSERT_ERROR_TESTS: list[UpdateTestCase] = [
         error_code=NOT_EXACT_VALUE_FIELD_ERROR,
         msg="Conflicting values in $and should error",
     ),
+    UpdateTestCase(
+        id="set_conflict_same_field",
+        query={"_id": 1},
+        update={"$set": {"a": 1}, "$setOnInsert": {"a": 2}},
+        upsert=True,
+        error_code=CONFLICTING_UPDATE_OPERATORS_ERROR,
+        msg="$set and $setOnInsert on same field should conflict",
+    ),
+    UpdateTestCase(
+        id="set_conflict_nested_path",
+        query={"_id": 1},
+        update={"$set": {"a.b": 1}, "$setOnInsert": {"a.b": 2}},
+        upsert=True,
+        error_code=CONFLICTING_UPDATE_OPERATORS_ERROR,
+        msg="$set and $setOnInsert on same nested path should conflict",
+    ),
+    UpdateTestCase(
+        id="set_conflict_parent_child",
+        query={"_id": 1},
+        update={"$set": {"a": 1}, "$setOnInsert": {"a.b": 2}},
+        upsert=True,
+        error_code=CONFLICTING_UPDATE_OPERATORS_ERROR,
+        msg="$set on parent and $setOnInsert on child path should conflict",
+    ),
 ]
 
 
