@@ -56,7 +56,7 @@ NULL_MISSING_TESTS: list[QueryTestCase] = [
 
 @pytest.mark.parametrize("test", pytest_params(NULL_MISSING_TESTS))
 def test_text_null_and_missing(collection, test):
-    """Test $text with null/missing/empty indexed fields."""
+    """Test $text with null/missing/empty field values."""
     collection.create_index([("content", "text")])
     collection.insert_many(test.doc)
     result = execute_command(collection, {"find": collection.name, "filter": test.filter})
@@ -69,35 +69,35 @@ NON_STRING_TYPE_TESTS: list[QueryTestCase] = [
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": 42}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Int32 field should not be indexed by text index",
+        msg="Int32 field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_int64_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": Int64(99)}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Int64 field should not be indexed by text index",
+        msg="Int64 field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_double_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": 3.14}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Double field should not be indexed by text index",
+        msg="Double field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_boolean_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": True}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Boolean field should not be indexed by text index",
+        msg="Boolean field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_date_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": datetime(2024, 1, 1)}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Date field should not be indexed by text index",
+        msg="Date field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_object_field",
@@ -111,56 +111,56 @@ NON_STRING_TYPE_TESTS: list[QueryTestCase] = [
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": Decimal128("9.99")}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Decimal128 field should not be indexed by text index",
+        msg="Decimal128 field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_bindata_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": b"hello"}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="BinData field should not be indexed by text index",
+        msg="BinData field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_objectid_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": ObjectId()}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="ObjectId field should not be indexed by text index",
+        msg="ObjectId field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_regex_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": Regex("hello")}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Regex field should not be indexed by text index",
+        msg="Regex field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_javascript_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": Code("function(){}")}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="JavaScript field should not be indexed by text index",
+        msg="JavaScript field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_timestamp_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": Timestamp(1, 1)}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="Timestamp field should not be indexed by text index",
+        msg="Timestamp field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_minkey_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": MinKey()}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="MinKey field should not be indexed by text index",
+        msg="MinKey field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_maxkey_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": MaxKey()}, {"_id": 2, "content": "hello"}],
         expected=[{"_id": 2, "content": "hello"}],
-        msg="MaxKey field should not be indexed by text index",
+        msg="MaxKey field should not be matched by $text query",
     ),
     QueryTestCase(
         id="data_array_of_strings",
@@ -170,21 +170,21 @@ NON_STRING_TYPE_TESTS: list[QueryTestCase] = [
             {"_id": 2, "content": "goodbye"},
         ],
         expected=[{"_id": 1, "content": ["hello", "world"]}],
-        msg="Array of strings should be indexed by text index",
+        msg="Array of strings should be matched by $text query",
     ),
     QueryTestCase(
         id="data_string_field",
         filter={"$text": {"$search": "hello"}},
         doc=[{"_id": 1, "content": "hello world"}],
         expected=[{"_id": 1, "content": "hello world"}],
-        msg="String field should be indexed by text index",
+        msg="String field should be matched by $text query",
     ),
 ]
 
 
 @pytest.mark.parametrize("test", pytest_params(NON_STRING_TYPE_TESTS))
 def test_text_bson_data_types(collection, test):
-    """Test $text with various BSON data types in text-indexed field."""
+    """Test $text query does not match documents where the field contains non-string BSON types."""
     collection.create_index([("content", "text")])
     collection.insert_many(test.doc)
     result = execute_command(collection, {"find": collection.name, "filter": test.filter})

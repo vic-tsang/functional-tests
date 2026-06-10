@@ -435,7 +435,7 @@ TEXT_SEARCH_TESTS: list[QueryTestCase] = [
             {"_id": 2, "content": [42, False]},
         ],
         expected=[{"_id": 1, "content": [1, "hello", True, "world"]}],
-        msg="Only string elements in mixed array should be indexed",
+        msg="Only string elements in mixed array should be matched by $text query",
     ),
     QueryTestCase(
         id="query_text_inside_or_in_find",
@@ -492,7 +492,7 @@ TEXT_SEARCH_TESTS: list[QueryTestCase] = [
 
 @pytest.mark.parametrize("test", pytest_params(TEXT_SEARCH_TESTS))
 def test_text_search(collection, test):
-    """Test $text search behavior with default English text index."""
+    """Test $text search behavior with default English language."""
     collection.create_index([("content", "text")])
     if test.doc:
         collection.insert_many(test.doc)
