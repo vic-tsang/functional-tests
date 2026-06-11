@@ -37,11 +37,18 @@ PULL_PARAMS = [
 ]
 
 
-def _build_update(spec, sample_value):
-    """Build the setup doc and update command based on which aspect is being tested."""
+def _build_setup_doc(spec, sample_value):
+    """Build the setup document based on which aspect is being tested."""
     if spec.id == "target_field":
-        return {"_id": 1, "arr": sample_value}, {"$pull": {"arr": 1}}
-    return {"_id": 1, "arr": [sample_value]}, {"$pull": {"arr": sample_value}}
+        return {"_id": 1, "arr": sample_value}
+    return {"_id": 1, "arr": [sample_value]}
+
+
+def _build_update(spec, sample_value):
+    """Build the update command based on which aspect is being tested."""
+    if spec.id == "target_field":
+        return {"$pull": {"arr": 1}}
+    return {"$pull": {"arr": sample_value}}
 
 
 @pytest.mark.parametrize(
@@ -49,7 +56,8 @@ def _build_update(spec, sample_value):
 )
 def test_pull_target_field_rejected(collection, bson_type, sample_value, spec):
     """Test $pull rejects non-array target field types with error."""
-    setup_doc, update = _build_update(spec, sample_value)
+    setup_doc = _build_setup_doc(spec, sample_value)
+    update = _build_update(spec, sample_value)
     collection.insert_one(setup_doc)
     result = execute_command(
         collection,
@@ -70,7 +78,8 @@ def test_pull_target_field_rejected(collection, bson_type, sample_value, spec):
 )
 def test_pull_bson_type_accepted(collection, bson_type, sample_value, spec):
     """Test $pull accepts valid BSON types for target field and value element."""
-    setup_doc, update = _build_update(spec, sample_value)
+    setup_doc = _build_setup_doc(spec, sample_value)
+    update = _build_update(spec, sample_value)
     collection.insert_one(setup_doc)
     execute_command(
         collection,
