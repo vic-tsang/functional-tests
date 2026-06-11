@@ -20,6 +20,7 @@ from documentdb_tests.framework.test_constants import (
     DECIMAL128_SMALL_EXPONENT,
     DECIMAL128_TRAILING_ZERO,
     DOUBLE_MAX,
+    DOUBLE_MIN,
     DOUBLE_MIN_SUBNORMAL,
     INT32_MAX,
     INT32_MIN,
@@ -123,6 +124,14 @@ DOUBLE_OVERFLOW_TESTS: list[UpdateTestCase] = [
         msg="DOUBLE_MAX × (-2) should produce -Infinity",
     ),
     UpdateTestCase(
+        "double_min_x_2",
+        setup_docs=[{"_id": 1, "val": DOUBLE_MIN}],
+        query={"_id": 1},
+        update={"$mul": {"val": 2.0}},
+        expected={"_id": 1, "val": float("-inf")},
+        msg="DOUBLE_MIN × 2 should produce -Infinity",
+    ),
+    UpdateTestCase(
         "double_subnormal_underflow",
         setup_docs=[{"_id": 1, "val": DOUBLE_MIN_SUBNORMAL}],
         query={"_id": 1},
@@ -207,6 +216,22 @@ DECIMAL128_OVERFLOW_TESTS: list[UpdateTestCase] = [
         update={"$mul": {"val": Decimal128("2")}},
         expected={"_id": 1, "val": Decimal128("Infinity")},
         msg="DECIMAL128_MAX × 2 should produce Decimal128 Infinity",
+    ),
+    UpdateTestCase(
+        "decimal128_min_x_2",
+        setup_docs=[{"_id": 1, "val": DECIMAL128_MIN}],
+        query={"_id": 1},
+        update={"$mul": {"val": Decimal128("2")}},
+        expected={"_id": 1, "val": Decimal128("-Infinity")},
+        msg="DECIMAL128_MIN × 2 should produce Decimal128 -Infinity",
+    ),
+    UpdateTestCase(
+        "decimal128_max_x_neg2",
+        setup_docs=[{"_id": 1, "val": DECIMAL128_MAX}],
+        query={"_id": 1},
+        update={"$mul": {"val": Decimal128("-2")}},
+        expected={"_id": 1, "val": Decimal128("-Infinity")},
+        msg="DECIMAL128_MAX × (-2) should produce Decimal128 -Infinity",
     ),
 ]
 

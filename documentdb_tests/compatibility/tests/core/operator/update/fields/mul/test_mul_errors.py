@@ -14,6 +14,7 @@ from documentdb_tests.framework.error_codes import (
     EMPTY_FIELD_NAME_ERROR,
     IMMUTABLE_FIELD_ERROR,
     PATH_NOT_VIABLE_ERROR,
+    TYPE_MISMATCH_ERROR,
 )
 from documentdb_tests.framework.executor import execute_command
 from documentdb_tests.framework.parametrize import pytest_params
@@ -46,6 +47,14 @@ SCALAR_TESTS: list[UpdateTestCase] = [
         update={"$mul": {"a.b": 2}},
         error_code=PATH_NOT_VIABLE_ERROR,
         msg="$mul creating sub-field under scalar should produce error",
+    ),
+    UpdateTestCase(
+        "mul_on_array_field",
+        setup_docs=[{"_id": 1, "arr": [10, 20, 30]}],
+        query={"_id": 1},
+        update={"$mul": {"arr": 3}},
+        error_code=TYPE_MISMATCH_ERROR,
+        msg="$mul on array field without index should produce type mismatch error",
     ),
 ]
 

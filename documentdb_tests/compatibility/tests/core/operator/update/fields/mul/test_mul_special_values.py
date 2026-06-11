@@ -229,6 +229,22 @@ NEGATIVE_ZERO_TESTS: list[UpdateTestCase] = [
         expected={"_id": 1, "val": DECIMAL128_NEGATIVE_ZERO},
         msg="Decimal128(-5) × 0 should produce Decimal128(-0)",
     ),
+    UpdateTestCase(
+        "decimal128_neg_zero_positive_exponent",
+        setup_docs=[{"_id": 1, "val": Decimal128("-0E+10")}],
+        query={"_id": 1},
+        update={"$mul": {"val": Decimal128("1")}},
+        expected={"_id": 1, "val": Decimal128("-0E+10")},
+        msg="Decimal128(-0E+10) × 1 should preserve negative-zero exponent",
+    ),
+    UpdateTestCase(
+        "decimal128_neg_zero_negative_exponent",
+        setup_docs=[{"_id": 1, "val": Decimal128("-0E-10")}],
+        query={"_id": 1},
+        update={"$mul": {"val": Decimal128("1")}},
+        expected={"_id": 1, "val": Decimal128("-0E-10")},
+        msg="Decimal128(-0E-10) × 1 should preserve negative-zero exponent",
+    ),
 ]
 
 SPECIAL_MULTIPLIER_TESTS: list[UpdateTestCase] = [
