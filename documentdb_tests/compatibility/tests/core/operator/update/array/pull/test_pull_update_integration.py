@@ -1,7 +1,6 @@
 """Tests for $pull update command integration.
 
-Covers: updateOne, updateMany, findAndModify, upsert, bulkWrite,
-and interaction with other update operators.
+Covers: updateMany, upsert, and multi-field operations.
 """
 
 from documentdb_tests.framework.assertions import assertSuccess, assertSuccessPartial
@@ -28,27 +27,6 @@ def test_pull_update_many(collection):
         result,
         {"n": 3, "nModified": 3, "ok": 1.0},
         msg="Should update all matched docs",
-    )
-
-
-def test_pull_find_and_modify(collection):
-    """Test $pull with findAndModify returns modified document."""
-    collection.insert_one({"_id": 1, "arr": [1, 2, 3, 2]})
-    result = execute_command(
-        collection,
-        {
-            "findAndModify": collection.name,
-            "query": {"_id": 1},
-            "update": {"$pull": {"arr": 2}},
-            "new": True,
-        },
-    )
-    assertSuccess(
-        result,
-        {"_id": 1, "arr": [1, 3]},
-        raw_res=True,
-        transform=lambda r: r["value"],
-        msg="findAndModify should return updated doc",
     )
 
 

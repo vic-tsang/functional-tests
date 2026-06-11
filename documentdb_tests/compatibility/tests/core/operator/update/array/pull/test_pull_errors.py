@@ -1,6 +1,6 @@
 """Tests for $pull operator error cases.
 
-Covers: operand-shape validation, invalid field paths.
+Covers: operand-shape validation, invalid field paths, unknown query operators.
 """
 
 import pytest
@@ -8,6 +8,7 @@ import pytest
 from documentdb_tests.compatibility.tests.core.operator.update.utils import UpdateTestCase
 from documentdb_tests.framework.assertions import assertFailureCode
 from documentdb_tests.framework.error_codes import (
+    BAD_VALUE_ERROR,
     EMPTY_FIELD_NAME_ERROR,
     FAILED_TO_PARSE_ERROR,
 )
@@ -46,6 +47,30 @@ PULL_ERROR_TESTS: list[UpdateTestCase] = [
         update={"$pull": {"": 1}},
         error_code=EMPTY_FIELD_NAME_ERROR,
         msg="Should error when $pull field name is empty",
+    ),
+    UpdateTestCase(
+        "unknown_query_operator_in_condition",
+        setup_docs=[{"_id": 1, "arr": [1, 2, 3]}],
+        query={"_id": 1},
+        update={"$pull": {"arr": {"$badop": 1}}},
+        error_code=BAD_VALUE_ERROR,
+        msg="Should error when $pull condition uses unknown query operator",
+    ),
+    UpdateTestCase(
+        "leading_dot_path",
+        setup_docs=[{"_id": 1, "arr": [1, 2, 3]}],
+        query={"_id": 1},
+        update={"$pull": {".arr": 1}},
+        error_code=EMPTY_FIELD_NAME_ERROR,
+        msg="Should error when $pull field has leading dot",
+    ),
+    UpdateTestCase(
+        "trailing_dot_path",
+        setup_docs=[{"_id": 1, "arr": [1, 2, 3]}],
+        query={"_id": 1},
+        update={"$pull": {"arr.": 1}},
+        error_code=EMPTY_FIELD_NAME_ERROR,
+        msg="Should error when $pull field has trailing dot",
     ),
 ]
 

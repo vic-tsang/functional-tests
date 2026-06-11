@@ -109,6 +109,14 @@ PULL_CORE_TESTS: list[UpdateTestCase] = [
         msg="Should remove exact array matches (order-sensitive)",
     ),
     UpdateTestCase(
+        "empty_array_condition_removes_empty_arrays_only",
+        setup_docs=[{"_id": 1, "arr": [1, [], 2, [], 3]}],
+        query={"_id": 1},
+        update={"$pull": {"arr": []}},
+        expected={"_id": 1, "arr": [1, 2, 3]},
+        msg="Should only remove embedded empty array elements, not all elements",
+    ),
+    UpdateTestCase(
         "array_different_order_no_remove",
         setup_docs=[{"_id": 1, "arr": [[1, 2], [2, 1], [3, 4]]}],
         query={"_id": 1},
