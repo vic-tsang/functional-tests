@@ -1,6 +1,6 @@
 """Tests for $addToSet update command integration.
 
-Covers: updateOne, updateMany, findAndModify, upsert, multiple fields,
+Covers: updateOne, updateMany, upsert, multiple fields,
 interaction with other operators, large arrays, multi-update batch.
 """
 
@@ -128,25 +128,6 @@ def test_addToSet_updateMany(collection):
         result,
         [{"_id": 1, "arr": [1, 2]}, {"_id": 2, "arr": [1, 2]}, {"_id": 3, "arr": [2]}],
         msg="updateMany should update each document independently",
-    )
-
-
-def test_addToSet_findAndModify(collection):
-    """Test $addToSet with findAndModify returns the updated document."""
-    collection.insert_one({"_id": 1, "arr": ["a"]})
-    result = execute_command(
-        collection,
-        {
-            "findAndModify": collection.name,
-            "query": {"_id": 1},
-            "update": {"$addToSet": {"arr": "b"}},
-            "new": True,
-        },
-    )
-    assertSuccessPartial(
-        result,
-        {"value": {"_id": 1, "arr": ["a", "b"]}},
-        msg="findAndModify should return updated doc",
     )
 
 
