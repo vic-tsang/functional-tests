@@ -51,17 +51,25 @@ REJECTION_TESTS = generate_bson_rejection_test_cases(BSON_PARAMS)
 ACCEPTANCE_TESTS = generate_bson_acceptance_test_cases(BSON_PARAMS)
 
 
-def _build_update_and_setup(spec, sample_value):
-    """Build setup doc and update for the given spec and sample value."""
+def _build_setup_doc(spec, sample_value):
+    """Build the document to insert before the update."""
     if spec.keyword == "multiplier":
-        return {"_id": 1, "val": 10}, {"$mul": {"val": sample_value}}
-    return {"_id": 1, "val": sample_value}, {"$mul": {"val": 2}}
+        return {"_id": 1, "val": 10}
+    return {"_id": 1, "val": sample_value}
+
+
+def _build_update(spec, sample_value):
+    """Build the $mul update command."""
+    if spec.keyword == "multiplier":
+        return {"$mul": {"val": sample_value}}
+    return {"$mul": {"val": 2}}
 
 
 @pytest.mark.parametrize("bson_type,sample_value,spec", REJECTION_TESTS)
 def test_mul_bson_type_rejected(collection, bson_type, sample_value, spec):
     """Verifies $mul rejects invalid BSON types."""
-    setup_doc, update = _build_update_and_setup(spec, sample_value)
+    setup_doc = _build_setup_doc(spec, sample_value)
+    update = _build_update(spec, sample_value)
     collection.insert_one(setup_doc)
     result = execute_command(
         collection,
@@ -73,7 +81,8 @@ def test_mul_bson_type_rejected(collection, bson_type, sample_value, spec):
 @pytest.mark.parametrize("bson_type,sample_value,spec", ACCEPTANCE_TESTS)
 def test_mul_bson_type_accepted(collection, bson_type, sample_value, spec):
     """Verifies $mul accepts numeric BSON types."""
-    setup_doc, update = _build_update_and_setup(spec, sample_value)
+    setup_doc = _build_setup_doc(spec, sample_value)
+    update = _build_update(spec, sample_value)
     collection.insert_one(setup_doc)
     result = execute_command(
         collection,
