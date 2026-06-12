@@ -24,7 +24,10 @@ def test_mul_update_many(collection):
             "updates": [{"q": {"group": "a"}, "u": {"$mul": {"val": 2}}, "multi": True}],
         },
     )
-    result = execute_command(collection, {"find": collection.name, "filter": {"group": "a"}})
+    result = execute_command(
+        collection,
+        {"find": collection.name, "filter": {"group": "a"}, "sort": {"_id": 1}},
+    )
     assertSuccess(
         result,
         [

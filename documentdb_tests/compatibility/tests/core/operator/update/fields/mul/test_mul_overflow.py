@@ -254,12 +254,9 @@ def test_mul_overflow(collection, test: UpdateTestCase):
     assertSuccess(result, [test.expected], msg=test.msg)
 
 
-ALL_NAN_TESTS = DECIMAL128_OVERFLOW_TESTS
-
-
-@pytest.mark.parametrize("test", pytest_params(ALL_NAN_TESTS))
-def test_mul_overflow_nan(collection, test: UpdateTestCase):
-    """Test $mul overflow producing Infinity (requires NaN-aware comparison)."""
+@pytest.mark.parametrize("test", pytest_params(DECIMAL128_OVERFLOW_TESTS))
+def test_mul_overflow_infinity(collection, test: UpdateTestCase):
+    """Test $mul overflow producing Decimal128 Infinity/-Infinity."""
     collection.insert_many(test.setup_docs)
     execute_command(
         collection,
