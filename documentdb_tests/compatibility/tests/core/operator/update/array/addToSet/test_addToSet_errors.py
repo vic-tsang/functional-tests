@@ -1,7 +1,7 @@
 """Tests for $addToSet error handling.
 
-Covers: invalid modifiers ($sort, $slice, $position, unknown), $each with non-array
-argument, immutable _id field.
+Covers invalid modifiers ($sort, $slice, $position, unknown) with $each,
+invalid $each value types (string, null, object), and immutable _id field.
 """
 
 import pytest
@@ -48,6 +48,9 @@ INVALID_MODIFIER_TESTS: list[UpdateTestCase] = [
         error_code=BAD_VALUE_ERROR,
         msg="Should error with unknown modifier in $addToSet",
     ),
+]
+
+EACH_TYPE_TESTS: list[UpdateTestCase] = [
     UpdateTestCase(
         "each_value_not_array",
         setup_docs=[{"_id": 1, "arr": [1, 2]}],
@@ -72,6 +75,9 @@ INVALID_MODIFIER_TESTS: list[UpdateTestCase] = [
         error_code=TYPE_MISMATCH_ERROR,
         msg="Should error when $each value is an object",
     ),
+]
+
+IMMUTABLE_FIELD_TESTS: list[UpdateTestCase] = [
     UpdateTestCase(
         "immutable_id_field",
         setup_docs=[{"_id": 1, "arr": [1]}],
@@ -83,7 +89,7 @@ INVALID_MODIFIER_TESTS: list[UpdateTestCase] = [
 ]
 
 
-ALL_TESTS = INVALID_MODIFIER_TESTS
+ALL_TESTS = INVALID_MODIFIER_TESTS + EACH_TYPE_TESTS + IMMUTABLE_FIELD_TESTS
 
 
 @pytest.mark.parametrize("test", pytest_params(ALL_TESTS))
