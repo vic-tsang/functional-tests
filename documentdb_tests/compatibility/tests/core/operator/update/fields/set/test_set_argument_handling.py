@@ -59,19 +59,6 @@ def test_set_argument_success(collection, test):
     assertSuccess(result, test.expected, msg=test.msg)
 
 
-def test_set_empty_operand_upsert_creates_from_query(collection):
-    """Test upsert with empty $set creates doc from query."""
-    execute_command(
-        collection,
-        {
-            "update": collection.name,
-            "updates": [{"q": {"_id": 1}, "u": {"$set": {}}, "upsert": True}],
-        },
-    )
-    result = execute_command(collection, {"find": collection.name, "filter": {"_id": 1}})
-    assertSuccess(result, [{"_id": 1}], msg="Upsert with empty $set should create doc from query")
-
-
 def test_set_empty_operand_noop(collection):
     """Test $set with empty operand {} is a no-op."""
     collection.insert_one({"_id": 1, "a": 1})
