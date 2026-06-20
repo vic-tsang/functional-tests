@@ -9,7 +9,7 @@ from documentdb_tests.compatibility.tests.core.utils.command_test_case import (
     CommandContext,
     CommandTestCase,
 )
-from documentdb_tests.framework.assertions import assertResult
+from documentdb_tests.framework.assertions import assertResult, assertSuccessPartial
 from documentdb_tests.framework.error_codes import IMMUTABLE_FIELD_ERROR
 from documentdb_tests.framework.executor import execute_command
 from documentdb_tests.framework.parametrize import pytest_params
@@ -252,6 +252,56 @@ AUTO_INCREMENT_TESTS: list[CommandTestCase] = [
     ),
 ]
 
+PIPELINE_UPSERT_TESTS: list[CommandTestCase] = [
+    CommandTestCase(
+        "pipeline-upsert-no-match-seeds-from-equality-query",
+        docs=[],
+        command={
+            "query": {"_id": 1, "base": 10},
+            "update": [{"$set": {"doubled": {"$multiply": ["$base", 2]}}}],
+            "upsert": True,
+            "new": True,
+        },
+        expected={
+            "value": Eq({"_id": 1, "base": 10, "doubled": 20}),
+            "lastErrorObject": Eq({"n": 1, "updatedExisting": False, "upserted": 1}),
+        },
+        msg="pipeline upsert with no match: pipeline computes against the "
+        "equality-query-seeded document",
+    ),
+    CommandTestCase(
+        "pipeline-upsert-no-match-non-equality-field-absent-during-compute",
+        docs=[],
+        command={
+            "query": {"_id": 1, "base": {"$gt": 5}},
+            "update": [{"$set": {"doubled": {"$multiply": [{"$ifNull": ["$base", 0]}, 2]}}}],
+            "upsert": True,
+            "new": True,
+        },
+        expected={
+            "value": Eq({"_id": 1, "doubled": 0}),
+            "lastErrorObject": Eq({"n": 1, "updatedExisting": False, "upserted": 1}),
+        },
+        msg="pipeline upsert with no match: non-equality ($gt) query field is NOT "
+        "seeded, so the pipeline sees it as missing",
+    ),
+    CommandTestCase(
+        "pipeline-upsert-existing-match-computes-from-stored-doc",
+        docs=[{"_id": 1, "base": 7}],
+        command={
+            "query": {"_id": 1},
+            "update": [{"$set": {"doubled": {"$multiply": ["$base", 2]}}}],
+            "upsert": True,
+            "new": True,
+        },
+        expected={
+            "value": Eq({"_id": 1, "base": 7, "doubled": 14}),
+            "lastErrorObject": Eq({"n": 1, "updatedExisting": True}),
+        },
+        msg="pipeline upsert with existing match: pipeline computes against the " "stored document",
+    ),
+]
+
 UPSERT_PROJECTION_TESTS: list[CommandTestCase] = [
     CommandTestCase(
         "upsert-new-true-id-exclusion-projection",
@@ -318,6 +368,7 @@ ALL_TESTS: list[CommandTestCase] = (
     + LAST_ERROR_OBJECT_TESTS
     + SET_ON_INSERT_TESTS
     + AUTO_INCREMENT_TESTS
+    + PIPELINE_UPSERT_TESTS
     + UPSERT_PROJECTION_TESTS
     + [
         CommandTestCase(
@@ -365,3 +416,46 @@ def test_findAndModify_upsert(database_client, collection, test):
         msg=test.msg,
         raw_res=True,
     )
+
+
+def test_findAndModify_upsert_unique_index_updates_instead_of_dup(collection):
+    """Test upsert with unique index: second upsert updates rather than duplicates."""
+    collection.create_index("key", unique=True)
+    execute_command(
+        collection,
+        {
+            "findAndModify": collection.name,
+            "query": {"key": "abc"},
+            "update": {"$set": {"val": 1}},
+            "upsert": True,
+        },
+    )
+    result = execute_command(
+        collection,
+        {
+            "findAndModify": collection.name,
+            "query": {"key": "abc"},
+            "update": {"$set": {"val": 2}},
+            "upsert": True,
+            "new": True,
+        },
+    )
+    assertSuccessPartial(
+        result, {"value": {"key": "abc", "val": 2}, "lastErrorObject": {"updatedExisting": True}}
+    )
+
+
+def test_findAndModify_upsert_array_filters_no_matching_array(collection):
+    """Test upsert + arrayFilters when inserted doc has no matching array elements."""
+    collection.insert_one({"_id": 1, "grades": [50, 60, 70]})
+    result = execute_command(
+        collection,
+        {
+            "findAndModify": collection.name,
+            "query": {"_id": 1},
+            "update": {"$set": {"grades.$[elem]": 100}},
+            "arrayFilters": [{"elem": {"$gte": 90}}],
+            "new": True,
+        },
+    )
+    assertSuccessPartial(result, {"value": {"_id": 1, "grades": [50, 60, 70]}})

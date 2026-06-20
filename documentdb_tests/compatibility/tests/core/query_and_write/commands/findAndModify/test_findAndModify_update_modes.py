@@ -192,33 +192,6 @@ def test_findAndModify_update_modes(database_client, collection, test):
     )
 
 
-def test_findAndModify_upsert_unique_index_updates_instead_of_dup(collection):
-    """Test upsert with unique index: second upsert updates rather than duplicates."""
-    collection.create_index("key", unique=True)
-    execute_command(
-        collection,
-        {
-            "findAndModify": collection.name,
-            "query": {"key": "abc"},
-            "update": {"$set": {"val": 1}},
-            "upsert": True,
-        },
-    )
-    result = execute_command(
-        collection,
-        {
-            "findAndModify": collection.name,
-            "query": {"key": "abc"},
-            "update": {"$set": {"val": 2}},
-            "upsert": True,
-            "new": True,
-        },
-    )
-    assertSuccessPartial(
-        result, {"value": {"key": "abc", "val": 2}, "lastErrorObject": {"updatedExisting": True}}
-    )
-
-
 def test_findAndModify_array_filters_updates_matching_elements(collection):
     """Test arrayFilters restricts update to matching array elements."""
     collection.insert_one({"_id": 1, "grades": [85, 92, 78, 95]})
@@ -314,19 +287,3 @@ def test_findAndModify_addToSet(collection):
         },
     )
     assertSuccessPartial(result, {"value": {"_id": 1, "arr": ["a", "b"]}})
-
-
-def test_findAndModify_upsert_array_filters_no_matching_array(collection):
-    """Test upsert + arrayFilters when inserted doc has no matching array elements."""
-    collection.insert_one({"_id": 1, "grades": [50, 60, 70]})
-    result = execute_command(
-        collection,
-        {
-            "findAndModify": collection.name,
-            "query": {"_id": 1},
-            "update": {"$set": {"grades.$[elem]": 100}},
-            "arrayFilters": [{"elem": {"$gte": 90}}],
-            "new": True,
-        },
-    )
-    assertSuccessPartial(result, {"value": {"_id": 1, "grades": [50, 60, 70]}})
