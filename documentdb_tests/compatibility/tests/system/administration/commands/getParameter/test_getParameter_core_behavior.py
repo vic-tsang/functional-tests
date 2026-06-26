@@ -343,3 +343,36 @@ def test_getParameter_setAt_buckets_startup_only_param(collection):
         raw_res=True,
         msg="Startup-only param should appear only under setAt:'startup'",
     )
+
+
+def test_getParameter_allParameters_with_named_param_returns_all(collection):
+    """Test {allParameters: true} with a named param returns the same keys as allParameters."""
+    all_only = execute_admin_command(collection, {"getParameter": {"allParameters": True}})
+    with_named = execute_admin_command(
+        collection, {"getParameter": {"allParameters": True}, "logLevel": 1}
+    )
+    all_only_keys = set(all_only.keys()) - {"ok"}
+    with_named_keys = set(with_named.keys()) - {"ok"}
+    assertSuccess(
+        {"key_diff": []},
+        {"key_diff": sorted(all_only_keys ^ with_named_keys)},
+        raw_res=True,
+        msg="allParameters with a named param should return the same keys as allParameters alone",
+    )
+
+
+def test_getParameter_allParameters_with_named_param_not_filtered(collection):
+    """Test {allParameters: true} with a named param is not narrowed to just that param."""
+    result = execute_admin_command(
+        collection, {"getParameter": {"allParameters": True}, "logLevel": 1}
+    )
+    param_keys = set(result.keys()) - {"ok"}
+    assertSuccess(
+        {"has_logLevel": True, "has_other_params": True},
+        {
+            "has_logLevel": "logLevel" in param_keys,
+            "has_other_params": len(param_keys) > 1,
+        },
+        raw_res=True,
+        msg="allParameters with a named param should still return all params, not just logLevel",
+    )

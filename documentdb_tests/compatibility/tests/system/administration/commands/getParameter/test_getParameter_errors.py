@@ -159,3 +159,11 @@ def test_getParameter_setAt_invalid_value(collection):
         collection, {"getParameter": {"allParameters": True, "setAt": "invalid"}}
     )
     assertFailureCode(result, BAD_VALUE_ERROR, msg="Invalid setAt value should fail")
+
+
+def test_getParameter_setAt_empty_string(collection):
+    """Test setAt with an empty string fails with BadValue, not treated as no filter."""
+    result = execute_admin_command(
+        collection, {"getParameter": {"allParameters": True, "setAt": ""}}
+    )
+    assertFailureCode(result, BAD_VALUE_ERROR, msg="Empty-string setAt value should fail")
