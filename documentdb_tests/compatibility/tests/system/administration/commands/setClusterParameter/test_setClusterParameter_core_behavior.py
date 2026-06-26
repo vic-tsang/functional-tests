@@ -157,6 +157,7 @@ def test_setClusterParameter_last_write_wins(collection):
         _restore(collection)
 
 
+@pytest.mark.requires(cluster_admin=True)
 def test_setClusterParameter_advances_cluster_parameter_time(collection):
     """Test setClusterParameter advances clusterParameterTime when the value changes."""
     _restore(collection)
